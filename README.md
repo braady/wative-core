@@ -62,9 +62,8 @@ Everything is encrypted on disk under your workspace password.
 
 | Networks (9) | Tokens (23) |
 |---|---|
-| ethereum, base, bnbchain, arbitrum, optimism, sepolia | native gas + USDC + USDT on each EVM mainnet (BSC versions are 18-decimal Binance-Peg) |
+| ethereum, base, bnbchain, arbitrum, optimism, sepolia | native gas + USDC + USDT on each EVM mainnet (BSC versions are 18-decimal Binance-Peg); plus WETH on ethereum |
 | solana, solana-testnet, solana-devnet | native SOL + USDC + USDT + WSOL on solana mainnet; native-only on testnets |
-|  | WETH on ethereum |
 
 ## Examples by domain
 
@@ -86,6 +85,39 @@ await ws.logger.setLevel("debug");
 
 await ws.lock();
 ```
+
+#### Where the workspace lives on disk
+
+Most apps pass an explicit path as the first argument — that path is used verbatim (with `~` expansion). When you omit the path (`Workspace.open(undefined, …)`), the library resolves it through a **3-tier strategy**, in order:
+
+1. **`WATIVE_WORKSPACE_PATH` environment variable** — if set and non-empty, this wins. Use it for ops/CI overrides without touching code:
+
+   ```bash
+   WATIVE_WORKSPACE_PATH=/var/lib/wative-prod   node app.js
+   WATIVE_WORKSPACE_PATH=~/.wative2             node app.js   # ~ is expanded
+   ```
+
+2. **`<process.cwd()>/.wative2`** — used when the env var is unset *and* this directory already exists on disk. Lets a project pin its workspace by simply having a `.wative2/` folder at the repo root.
+
+3. **`<os.homedir()>/.wative2`** — last-resort fallback. Where `Workspace.open(undefined, pwd, true)` lands on a fresh machine when no env var is set and there's no project-local `.wative2/`. Acts as the user-wide default workspace.
+
+So a typical lifecycle looks like:
+
+```ts
+// First run on a fresh machine — env unset, no <cwd>/.wative2 → creates ~/.wative2
+await Workspace.open(undefined, "wsp-pwd", true);
+
+// Later, opt the project into a local workspace
+// $ mkdir .wative2
+// Now <cwd>/.wative2 exists → tier 2 wins
+await Workspace.open(undefined, "wsp-pwd", true);
+
+// Or override via env in CI/staging
+// $ WATIVE_WORKSPACE_PATH=/srv/wative-staging node app.js
+await Workspace.open(undefined, "wsp-pwd", true);
+```
+
+If you'd rather not rely on the resolver, just pass the path explicitly — it short-circuits all three tiers.
 
 ### Account — HD vs PK, derive wallets, import keys
 
