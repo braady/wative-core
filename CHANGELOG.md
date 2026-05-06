@@ -2,7 +2,19 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.0.4] — 2026-05-04
+## [2.0.5] — 2026-05-04
+
+### Added
+- **`tx.toRawTx()` for both `EvmTransaction` and `SvmTransaction`.** Hand the transaction off to any external signer or RPC client in its native shape — no need to re-derive inputs.
+  - `EvmTransaction.toRawTx()` returns a plain `EvmRawTx` object (the `web3.js` / `ethers` / `viem` `TransactionRequest` shape) with `from`, `to`, `value`, `data`, `type`, `chainId`, plus any populated gas / nonce / accessList fields. Synchronous, no autofill, no RPC calls.
+  - `SvmTransaction.toRawTx()` returns the underlying `@solana/web3.js` `Transaction` instance, fully populated with instructions, fee payer, and `recentBlockhash`. Async (the build is constructed on demand and cached).
+  - Useful for: appending instructions before signing, signing with an external `Keypair` / hardware wallet, routing through a custom RPC client, or feeding into a third-party simulation tool.
+- New `EvmRawTx` type exported from the package entry.
+
+### Changed
+- `SvmTransaction` no longer requires a bound `Address` purely to materialize the underlying transaction object. If you supply `recentBlockhash` at construction, `toRawTx()` builds entirely structurally — useful for offline construction and external signing flows.
+
+
 
 ### Changed
 - Better cross-platform reliability. Long workspace paths on Windows (over 240 characters) now work without manual prefixing. Workspaces with symlinked roots are resolved to their real paths at unlock; symlinked ancestors are refused on writes, defending against a class of redirection attacks on shared and multi-user systems.

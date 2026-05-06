@@ -280,6 +280,36 @@ const receipt = await evmTracker.whenConfirmed(3);
 
 For Solana transactions, build instructions with `@solana/web3.js` (or your preferred Solana toolkit) and pass them to `new SvmTransaction({ from, instructions, network })`. The signing, sending, and tracker lifecycle then mirror the EVM flow.
 
+#### Hand off to an external signer / RPC client
+
+Both `EvmTransaction` and `SvmTransaction` expose `toRawTx()` for routing the transaction through any chain-native tool you already use:
+
+```ts
+// EVM — synchronous; returns a plain web3.js / ethers / viem TransactionRequest
+const evmTx = evmAddr.buildTransaction({
+  to: "0x1234567890123456789012345678901234567890" as EvmAddress,
+  value: 10_000_000n,
+  gasLimit: 21000n,
+});
+const rawEvm = evmTx.toRawTx();
+// { from, to, value, data, type, chainId, gasLimit, ... }
+// pass `rawEvm` to web3.eth.sendTransaction, ethers Signer, viem walletClient, etc.
+```
+
+```ts
+// Solana — async; returns the underlying @solana/web3.js Transaction
+const svmTx = svmAddr.buildTransaction({
+  recipient: "11111111111111111111111111111112",
+  amount: 1_000_000n,
+});
+const rawSvm = await svmTx.toRawTx();
+// rawSvm.add(extraIx);
+// rawSvm.sign(theirKeypair);
+// connection.sendRawTransaction(rawSvm.serialize());
+```
+
+For SVM, if you supply `recentBlockhash` at construction time, `toRawTx()` builds entirely offline — no Address binding required.
+
 ### Workspace search
 
 ```ts
