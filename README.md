@@ -10,14 +10,16 @@ pnpm add wative-core
 npm i wative-core
 ```
 
-Requires Node.js 18.18+.
+Requires Node.js 22.12+.
+
+<img width="1280" height="720" alt="wative-hierarchy" src="https://github.com/user-attachments/assets/eea4e0de-e19f-43ff-8a2b-ea5193998166" />
 
 ## Quick start
 
 ```ts
 import { Workspace } from "wative-core";
 
-const ws = await Workspace.open(undefined, "your-workspace-password", true);
+const ws = await Workspace.open({ password: "your-workspace-password" });
 
 const account = await ws.accounts.create(
   "Trading Desk",
@@ -36,13 +38,22 @@ await ws.lock();
 
 ## Runnable examples
 
-A `tests/` folder ships with the package — runnable JavaScript files demonstrating every domain's use cases. Read them top-to-bottom as walkthroughs, or run them as integration tests via Node's built-in test runner:
+A `tests/` folder ships with the package — runnable JavaScript files demonstrating every domain's use cases. Read them top-to-bottom as walkthroughs, or run them as integration tests via Node's built-in test runner.
+
+Copy them out of `node_modules` first, then run the whole set:
 
 ```bash
-node --test node_modules/wative-core/tests/*.test.cjs
+cp -R node_modules/wative-core/tests wative-examples
+node --test wative-examples/
 ```
 
-Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, and the workspace logger. See [tests/README.md](./tests/README.md) for the index.
+The copy is required: Node's test runner skips anything under `node_modules`, so pointing `--test` there finds no files. To run a single example without copying, execute it directly — a `node:test` file runs itself:
+
+```bash
+node node_modules/wative-core/tests/01-quick-start.test.cjs
+```
+
+Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, and package resolution. See [tests/README.md](./tests/README.md) for the index.
 
 ## What you can do
 
@@ -52,17 +63,18 @@ The library is organized around seven things you'll work with:
 - **`Account`** — either an HD account (one BIP-39 mnemonic, can derive many wallets) or a PK account (raw private keys you import one at a time). Each account can have its own password or share the workspace password.
 - **`Wallet`** — a unit inside an account. HD wallets carry one EVM and one Solana address; PK wallets carry one address.
 - **`Address`** — an on-chain identity. Sign messages, build transactions, send them.
-- **`Network`** — chain metadata. 9 networks ship pre-loaded.
-- **`Asset`** — token metadata. 23 tokens ship pre-loaded.
+- **`Network`** — chain metadata. 10 networks ship pre-loaded.
+- **`Asset`** — token metadata. 25 tokens ship pre-loaded.
 - **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`).
 
 Everything is encrypted on disk under your workspace password.
 
 ### Pre-loaded networks and tokens
 
-| Networks (9) | Tokens (23) |
+| Networks (10) | Tokens (25) |
 |---|---|
-| ethereum, base, bnbchain, arbitrum, optimism, sepolia | native gas + USDC + USDT on each EVM mainnet (BSC versions are 18-decimal Binance-Peg); plus WETH on ethereum |
+| ethereum, base, bnbchain, arbitrum, optimism | native gas + USDC + USDT on each EVM mainnet (BSC versions are 18-decimal Binance-Peg); plus WETH on ethereum |
+| sepolia, arbitrum-sepolia | native ETH on both testnets; plus USDC on arbitrum-sepolia |
 | solana, solana-testnet, solana-devnet | native SOL + USDC + USDT + WSOL on solana mainnet; native-only on testnets |
 
 ## Examples by domain
@@ -72,11 +84,11 @@ Everything is encrypted on disk under your workspace password.
 ```ts
 import { Workspace } from "wative-core";
 
-const ws = await Workspace.open(undefined, "wsp-pwd", true);
+const ws = await Workspace.open({ password: "wsp-pwd" });
 
-const ws2 = await Workspace.open("/var/lib/wative-prod", "wsp-pwd", true);
+const ws2 = await Workspace.open({ path: "/var/lib/wative-prod", password: "wsp-pwd" });
 
-const locked = await Workspace.open("/var/lib/wative-prod");
+const locked = await Workspace.open({ path: "/var/lib/wative-prod" });
 console.log(locked.locked);
 await locked.unlock("wsp-pwd");
 
@@ -86,9 +98,27 @@ await ws.logger.setLevel("debug");
 await ws.lock();
 ```
 
+#### Creating vs. opening — it's automatic
+
+You don't tell `open()` whether to create or open. It decides from what's already at the location:
+
+- **Nothing there (or an empty folder)** → a new workspace is created.
+- **A wative workspace already there** → it's opened, and your password is checked.
+- **Something else there** (a folder with unrelated files) → the call is **refused** with a `PARAMETER_ERROR`, so a mistyped path never turns one of your other folders into a workspace.
+
+Pass the password to get an unlocked workspace, or omit it to get a locked one you unlock later:
+
+```ts
+const ws = await Workspace.open({ path: "/var/lib/wative-prod", password: "wsp-pwd" }); // unlocked
+const later = await Workspace.open({ path: "/var/lib/wative-prod" });                   // locked
+await later.unlock("wsp-pwd");
+```
+
+`open()` also accepts the older positional form — `Workspace.open(pathOrProvider, password)` — which works exactly the same way.
+
 #### Where the workspace lives on disk
 
-Most apps pass an explicit path as the first argument — that path is used verbatim (with `~` expansion). When you omit the path (`Workspace.open(undefined, …)`), the library resolves it through a **3-tier strategy**, in order:
+Most apps pass an explicit path as the first argument — that path is used verbatim (with `~` expansion). When you omit the path, the library resolves it through a **3-tier strategy**, in order:
 
 1. **`WATIVE_WORKSPACE_PATH` environment variable** — if set and non-empty, this wins. Use it for ops/CI overrides without touching code:
 
@@ -99,22 +129,22 @@ Most apps pass an explicit path as the first argument — that path is used verb
 
 2. **`<process.cwd()>/.wative2`** — used when the env var is unset *and* this directory already exists on disk. Lets a project pin its workspace by simply having a `.wative2/` folder at the repo root.
 
-3. **`<os.homedir()>/.wative2`** — last-resort fallback. Where `Workspace.open(undefined, pwd, true)` lands on a fresh machine when no env var is set and there's no project-local `.wative2/`. Acts as the user-wide default workspace.
+3. **`<os.homedir()>/.wative2`** — last-resort fallback. Where `Workspace.open({ password })` lands on a fresh machine when no env var is set and there's no project-local `.wative2/`. Acts as the user-wide default workspace.
 
 So a typical lifecycle looks like:
 
 ```ts
 // First run on a fresh machine — env unset, no <cwd>/.wative2 → creates ~/.wative2
-await Workspace.open(undefined, "wsp-pwd", true);
+await Workspace.open({ password: "wsp-pwd" });
 
 // Later, opt the project into a local workspace
 // $ mkdir .wative2
 // Now <cwd>/.wative2 exists → tier 2 wins
-await Workspace.open(undefined, "wsp-pwd", true);
+await Workspace.open({ password: "wsp-pwd" });
 
 // Or override via env in CI/staging
 // $ WATIVE_WORKSPACE_PATH=/srv/wative-staging node app.js
-await Workspace.open(undefined, "wsp-pwd", true);
+await Workspace.open({ password: "wsp-pwd" });
 ```
 
 If you'd rather not rely on the resolver, just pass the path explicitly — it short-circuits all three tiers.
@@ -177,7 +207,7 @@ await hd.wallets.drop(hd.wallets[10]);
 const evmAddr = hd.wallets[0].addresses.find((a) => a.vm === "evm")!;
 const svmAddr = hd.wallets[0].addresses.find((a) => a.vm === "svm")!;
 
-const sig = await evmAddr.signMessage("hello hedgue");
+const sig = evmAddr.signMessage("hello hedgue");
 
 import { Network } from "wative-core";
 const tx = await evmAddr.buildTransaction({
@@ -351,7 +381,7 @@ class MyDatabaseProvider extends Provider {
   async close(): Promise<void> {}
 }
 
-const ws = await Workspace.open(new MyDatabaseProvider("postgres://..."), "wsp-pwd", true);
+const ws = await Workspace.open({ provider: new MyDatabaseProvider("postgres://..."), password: "wsp-pwd" });
 ```
 
 `Workspace.open()` accepts any `Provider` subclass — the rest of the library is identical regardless of where state lives.
@@ -367,7 +397,7 @@ import { TokenProgram, Token2022Program } from "wative-core/artifacts/svm";
 
 ## Compatibility notes
 
-- **Runtime**: Node.js 18.18+. Deno / Bun / browser support is partial. Some chain libraries that ship as compiled dependencies do not have universal builds yet.
+- **Runtime**: Node.js 22.12+. Deno / Bun / browser support is partial. Some chain libraries that ship as compiled dependencies do not have universal builds yet.
 - **Platform builds**: a few compiled dependencies lack pre-built binaries for Windows-ARM64 and Alpine-musl. Most installs on macOS / Linux x64 / Linux ARM64 won't notice.
 - **One process at a time**: opening the same workspace from two Node processes simultaneously isn't supported.
 
