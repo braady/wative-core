@@ -15,7 +15,7 @@ const MNEMONIC =
 
 test("setDefaultNetwork — accepts slug, chainId, hex chainId, and Network instance", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-default-net-forms-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
 
@@ -36,7 +36,7 @@ test("setDefaultNetwork — accepts slug, chainId, hex chainId, and Network inst
 
 test("setDefaultNetwork — rejects an unknown network", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-default-net-bad-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
 
@@ -54,14 +54,14 @@ test("setDefaultNetwork — rejects an unknown network", async () => {
 
 test("setDefaultNetwork — choice persists across lock + reopen", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-default-net-persist-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   await acc.setDefaultNetwork(Network.Solana);
   assert.strictEqual(acc.defaultNetwork, "solana");
 
   await ws.lock();
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   const reopened = ws.accounts.bySlug(acc.slug);
   assert.ok(reopened);
   assert.strictEqual(reopened.defaultNetwork, "solana");

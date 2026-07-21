@@ -13,7 +13,7 @@ test("quick start — open, create HD account, derive wallets, lock", async () =
   const root = mkdtempSync(join(tmpdir(), "wative-quickstart-"));
   const password = "your-workspace-password";
 
-  const ws = await Workspace.open(root, password, true);
+  const ws = await Workspace.open({ path: root, password });
   assert.strictEqual(ws.locked, false);
 
   const account = await ws.accounts.create(

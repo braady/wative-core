@@ -13,7 +13,7 @@ const SVM_PK = "xtGWcHvQsr5ue8zG2F5fm31bW8vyn597Y92gUWaZZg3S1Z6FeJMATL8KU3xJMGbL
 
 test("PK account — create from EVM key + import a Solana key", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-pk-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create(
     "External Hot Wallet",
@@ -35,7 +35,7 @@ test("PK account — create from EVM key + import a Solana key", async () => {
 
 test("PK account — duplicate import is rejected", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-pk-dup-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("HotWallet", "wsp-pwd", EVM_PK, undefined, { kind: "PK" });
   await assert.rejects(acc.importPrivateKey(EVM_PK, "evm"), (err) => err.code === "PARAMETER_ERROR");
@@ -45,7 +45,7 @@ test("PK account — duplicate import is rejected", async () => {
 
 test("PK account — drop a wallet (account keeps at least one)", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-pk-drop-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("HotWallet", "wsp-pwd", EVM_PK, undefined, { kind: "PK" });
   await acc.importPrivateKey(SVM_PK, "svm");

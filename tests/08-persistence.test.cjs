@@ -14,7 +14,7 @@ const MNEMONIC =
 
 test("persistence — multiple HD + PK accounts round-trip", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-persist-acc-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const hd = await ws.accounts.create("Desk One", "wsp-pwd", MNEMONIC);
   await hd.deriveWallets(3);
@@ -28,7 +28,7 @@ test("persistence — multiple HD + PK accounts round-trip", async () => {
   );
 
   await ws.lock();
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   assert.strictEqual(ws.accounts.length, 2);
   const reopenHd = ws.accounts.bySlug(hd.slug);
   const reopenPk = ws.accounts.bySlug(pk.slug);
@@ -43,7 +43,7 @@ test("persistence — multiple HD + PK accounts round-trip", async () => {
 
 test("persistence — added user network round-trips with all fields", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-persist-net-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   await ws.networks.add(new Network({
     slug: "monad-testnet",
@@ -56,7 +56,7 @@ test("persistence — added user network round-trips with all fields", async () 
   }));
 
   await ws.lock();
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   const monad = ws.networks.bySlug("monad-testnet");
   assert.ok(monad);
   assert.strictEqual(monad.chainId, 10143);
@@ -69,7 +69,7 @@ test("persistence — added user network round-trips with all fields", async () 
 
 test("persistence — custom user asset round-trips", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-persist-asset-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   await ws.addAsset(new Asset({
     id: 250,
@@ -81,7 +81,7 @@ test("persistence — custom user asset round-trips", async () => {
   }));
 
   await ws.lock();
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   const ethAssets = await ws.assets(Network.Ethereum);
   const pepe = ethAssets.find((a) => a.id === 250);
   assert.ok(pepe);
@@ -93,12 +93,12 @@ test("persistence — custom user asset round-trips", async () => {
 
 test("persistence — custom logger config round-trips", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-persist-log-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   await ws.logger.setLevel("debug");
 
   await ws.lock();
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   assert.strictEqual(ws.logger.config.minLevel, "debug");
 
   await ws.lock();

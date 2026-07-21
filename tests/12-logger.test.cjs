@@ -12,7 +12,7 @@ const { Workspace } = require("../dist/index.cjs");
 
 test("logger — write at every level + change minLevel at runtime", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-logger-write-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   ws.logger.trace("trace event", { phase: "init" });
   ws.logger.debug("debug event", { phase: "init" });
@@ -31,13 +31,13 @@ test("logger — write at every level + change minLevel at runtime", async () =>
 
 test("logger — config persists across reopen", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-logger-persist-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   await ws.logger.setLevel("error");
   assert.strictEqual(ws.logger.config.minLevel, "error");
 
   await ws.lock();
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   assert.strictEqual(ws.logger.config.minLevel, "error");
 
   await ws.lock();

@@ -130,12 +130,13 @@ class InMemoryProvider extends Provider {
 test("custom provider — full lifecycle against an in-memory backend", async () => {
   const provider = new InMemoryProvider("memory://desk-1");
 
-  let ws = await Workspace.open(provider, "wsp-pwd", true);
+  let ws = await Workspace.open({ provider, password: "wsp-pwd" });
   assert.strictEqual(ws.locked, false);
 
   const slugs = ws.networks.map((n) => n.slug).sort();
-  assert.strictEqual(slugs.length, 9);
+  assert.strictEqual(slugs.length, 10);
   assert.ok(slugs.includes("ethereum"));
+  assert.ok(slugs.includes("arbitrum-sepolia"));
 
   const acc = await ws.accounts.create(
     "Trader",
@@ -146,7 +147,7 @@ test("custom provider — full lifecycle against an in-memory backend", async ()
   assert.strictEqual(acc.wallets.length, 3);
 
   await ws.lock();
-  ws = await Workspace.open(provider, "wsp-pwd");
+  ws = await Workspace.open({ provider, password: "wsp-pwd" });
   const reopened = ws.accounts.bySlug(acc.slug);
   assert.ok(reopened);
   assert.strictEqual(reopened.wallets.length, 3);
@@ -156,8 +157,8 @@ test("custom provider — full lifecycle against an in-memory backend", async ()
 
 test("custom provider — bad password is rejected", async () => {
   const provider = new InMemoryProvider("memory://desk-2");
-  const ws = await Workspace.open(provider, "right-pwd", true);
+  const ws = await Workspace.open({ provider, password: "right-pwd" });
   await ws.lock();
 
-  await assert.rejects(Workspace.open(provider, "wrong-pwd"), (err) => err.code === "BAD_PASSWORD");
+  await assert.rejects(Workspace.open({ provider, password: "wrong-pwd" }), (err) => err.code === "BAD_PASSWORD");
 });

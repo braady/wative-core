@@ -14,14 +14,14 @@ const MNEMONIC =
 
 test("address — signMessage on EVM and SVM", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-sign-msg-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   const evm = acc.wallets[0].addresses.find((a) => a.vm === "evm");
   const svm = acc.wallets[0].addresses.find((a) => a.vm === "svm");
 
-  const evmSig = await evm.signMessage("hello");
-  const svmSig = await svm.signMessage("hello");
+  const evmSig = evm.signMessage("hello");
+  const svmSig = svm.signMessage("hello");
 
   assert.ok(typeof evmSig === "string" && evmSig.startsWith("0x"));
   assert.ok(typeof svmSig === "string" && svmSig.length > 0);
@@ -32,7 +32,7 @@ test("address — signMessage on EVM and SVM", async () => {
 
 test("address — buildTransaction convenience helper (offline)", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-build-tx-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   const evm = acc.wallets[0].addresses.find((a) => a.vm === "evm");

@@ -14,7 +14,7 @@ const MNEMONIC =
 
 test("filter — find an Account by displayName or slug", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-filter-acc-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Trading Desk", "wsp-pwd", MNEMONIC);
 
@@ -31,7 +31,7 @@ test("filter — find an Account by displayName or slug", async () => {
 
 test("filter — find a Wallet by id or by tag", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-filter-wallet-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   await acc.deriveWallets(2);
@@ -51,7 +51,7 @@ test("filter — find a Wallet by id or by tag", async () => {
 
 test("filter — find an Address by its public key (case-insensitive for EVM)", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-filter-addr-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   const evm = acc.wallets[0].addresses.find((a) => a.vm === "evm");
@@ -69,7 +69,7 @@ test("filter — find an Address by its public key (case-insensitive for EVM)", 
 
 test("filter — find an Asset; returns null for unknown query", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-filter-asset-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const usdc = await ws.filter("USDC", "Asset");
   assert.ok(usdc && usdc.symbol === "USDC");

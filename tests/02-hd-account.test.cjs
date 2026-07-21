@@ -14,7 +14,7 @@ const MNEMONIC =
 
 test("HD account — derive, slice, dump mnemonic", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-hd-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   await acc.deriveWallets(10);
@@ -30,7 +30,7 @@ test("HD account — derive, slice, dump mnemonic", async () => {
 
 test("HD account — own password + resetPassword", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-hd-pwd-"));
-  const ws = await Workspace.open(root, "wsp-pwd", true);
+  const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const sub = await ws.accounts.create("SubAccount", "sub-pwd", MNEMONIC, undefined, {
     hasOwnPassword: true,
@@ -53,7 +53,7 @@ test("HD account — own password + resetPassword", async () => {
 
 test("HD account — round-trip across lock + reopen", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-hd-reopen-"));
-  let ws = await Workspace.open(root, "wsp-pwd", true);
+  let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("Persistent", "wsp-pwd", MNEMONIC);
   await acc.deriveWallets(2);
@@ -61,7 +61,7 @@ test("HD account — round-trip across lock + reopen", async () => {
 
   await ws.lock();
 
-  ws = await Workspace.open(root, "wsp-pwd");
+  ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   const reopened = ws.accounts.bySlug(acc.slug);
   assert.ok(reopened);
   assert.strictEqual(reopened.wallets.length, 3);
