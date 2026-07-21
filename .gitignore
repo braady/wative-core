@@ -1,3 +1,6 @@
 node_modules
 *.log
 .DS_Store
+
+# Local publish tooling, delivered by the release sync. Not for publication.
+.githooks/
