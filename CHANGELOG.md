@@ -2,6 +2,23 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] — 2026-07-28
+
+A drop-in upgrade from 2.0.7. Nothing in the public API changed, and existing workspaces open exactly as before.
+
+### Added
+- **Browser support for the chain artifacts.** `wative-core/artifacts/evm` and `wative-core/artifacts/svm` can now be bundled into a web app. You will also need a `Buffer` polyfill, which is standard for any Solana dapp.
+
+### Changed
+- Smaller install and a lighter dependency tree, after moving off two unmaintained packages.
+
+### Fixed
+- Signing typed data with an empty `bytes` value no longer fails.
+- A transaction whose gas limit is too low to run is now rejected before signing, instead of being sent and failing on-chain.
+
+### Coming next
+- Browser support for the main entry, including a browser storage backend. The main entry still needs a filesystem and is Node-only for now.
+
 ## [2.0.7] — 2026-07-21
 
 > **Runtime requirement changed:** this release requires **Node.js 22.12+** (was 18.18+). See *Changed → Dependencies* below.
