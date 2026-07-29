@@ -2,25 +2,47 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.1.0] — 2026-07-28
+## [2.2.0] — 2026-07-28
 
-A drop-in upgrade from 2.0.7. Nothing in the public API changed, and existing workspaces open exactly as before.
-
-### License
-- **Now Modified MIT** (was BUSL-1.1). Free to use commercially. If a product you build with it makes more than $50,000 a month, show the "Wative" label where your users can see it.
+Runs in the browser now. Existing Node code keeps working unchanged.
 
 ### Added
-- **Browser support for the chain artifacts.** `wative-core/artifacts/evm` and `wative-core/artifacts/svm` can now be bundled into a web app. You will also need a `Buffer` polyfill, which is standard for any Solana dapp.
+- **Browser support.** The library works in a web app, keeping wallets in the browser's own storage. See the browser example in the Quick start.
+- **Backup and restore.** Export a workspace as encrypted data and load it somewhere else. A workspace created in a browser opens on a desktop, and the other way round.
+- **Writing your own storage is simpler.** A custom backend now needs six small methods; encryption and file layout are handled for you.
 
 ### Changed
-- Smaller install and a lighter dependency tree, after moving off two unmaintained packages.
+- `HybridProvider` and `FileSink` are still available from the main import in Node. They also live at `wative-core/node`, which is where new code should get them.
+
+### Please note
+- Browsers can clear their own storage. Creating a **new** wallet in a browser is blocked unless the browser promises to keep the data, or you explicitly accept the risk — an existing wallet always opens. Give users a way to back up.
+- A `Buffer` polyfill is needed in the browser. One line, shown in the Quick start.
+
+## [2.1.0] — 2026-07-28
+
+> **Browser groundwork.** This release removes every Node-builtin dependency from the crypto and EVM layers. `wative-core/artifacts/evm` and `wative-core/artifacts/svm` now bundle for the browser with **zero** unresolvable Node builtins; the main entry is down to four (`fs`, `fs/promises`, `os`, `path`), all belonging to the filesystem provider. **No public API changed** — this is a drop-in upgrade from 2.0.7.
+
+### License
+- **Relicensed to a Modified MIT License** (previously BUSL-1.1). The library is now free for any use, including commercial. The sole added condition: a product or service generating more than 50,000 USD in monthly revenue must prominently display "Wative" on its user interface. Measured per product, not per company. `package.json` declares `"license": "SEE LICENSE IN LICENSE"`, the npm convention for a non-standard licence.
+
+### Changed
+- **`web3` 1.7.3 and `ethereumjs-wallet` 1.0.2 replaced by `ethers` 6.** Both were used only for offline work — a provider-less `new Web3()` for the ABI codec and transaction/message signing, and `ethereumjs-wallet` solely for BIP-44 derivation. All RPC already went through `fetch`. web3's transitive tree (`web3-providers-http`/`ws`, `xhr2-cookies`, `readable-stream`, `cipher-base`, `ethereumjs-util`, `@ethereumjs/common`) pulled in `http`, `https`, `stream`, `events`, `url`, `assert` and `os`, which alone made the package impossible to bundle for a browser. web3 1.x is also end-of-life.
+- **Crypto core moved from `node:crypto` to `@noble`.** AES-256-GCM now runs on `@noble/ciphers`; PBKDF2, HMAC and CSPRNG bytes on `@noble/hashes` (Argon2id already used `@noble/hashes`). Every primitive was verified byte-identical against `node:crypto` before the switch. **`Cipher.encrypt`/`decrypt` remain synchronous** — that is why `@noble` was chosen over WebCrypto, whose async-only `SubtleCrypto` would have forced the whole `Cipher` contract async and made this a breaking change.
+- **`node:net.isIP` replaced by a pure-JS classifier**, differential-tested against `node:net.isIP` over ~600 valid, malformed and adversarial inputs.
+- **Wire format, key derivation and on-disk layout are unchanged.** A workspace written by 2.0.7 opens under 2.1.0 with byte-identical results, and the production KDF parameters (PBKDF2 600 000 iterations; Argon2id t=3, m=64 MiB, p=1) are pinned by test.
 
 ### Fixed
-- Signing typed data with an empty `bytes` value no longer fails.
-- A transaction whose gas limit is too low to run is now rejected before signing, instead of being sent and failing on-chain.
+- **EIP-712 with an empty `bytes` field no longer crashes.** web3's `keccak256("0x")` returned `null` and broke the signer; empty bytes now hash to the canonical empty-input digest, which is what EIP-712 specifies.
+- **Intrinsic-gas validation preserved.** web3 rejected an under-funded `gasLimit` before signing and ethers does not, so the check is reimplemented — a transaction that can never execute is no longer signed and broadcast, burning the nonce.
 
-### Coming next
-- Browser support for the main entry, including a browser storage backend. The main entry still needs a filesystem and is Node-only for now.
+### Notes for browser consumers
+- `wative-core/artifacts/evm` and `wative-core/artifacts/svm` bundle cleanly today (the EVM artifact is ~128 KB min+gzip).
+- A **`Buffer` polyfill is still required**, because `@solana/web3.js` and `@coral-xyz/anchor` depend on the global. This is standard for any Solana dapp.
+- The main entry still requires the filesystem builtins listed above. Splitting the Node-only surface (`HybridProvider`, `FileSink`) behind a `wative-core/node` subpath, and adding an IndexedDB provider, is planned for 2.2.0.
+
+### Internal
+- `scripts/check-browser-bundle.mjs` bundles every published entry for `platform=browser` and ratchets the set of unresolvable Node builtins — failing both on a regression and on a stale baseline, so browser compatibility can only improve. Wired into `prepublishOnly`.
+- Known-answer vectors (`tests/kat/`) pin exact bytes for HD derivation, EIP-191/712 signing, ed25519, the ABI codec, all three EVM transaction types, both KDFs and the envelope wire format; a committed v2.0.7 workspace fixture is opened on every run.
 
 ## [2.0.7] — 2026-07-21
 

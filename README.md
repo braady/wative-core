@@ -10,14 +10,20 @@ pnpm add wative-core
 npm i wative-core
 ```
 
-Requires Node.js 22.12+.
+Node.js 22.12+ for the filesystem backend. The browser build has no Node requirement.
 
 <img width="1280" height="720" alt="wative-hierarchy" src="https://github.com/user-attachments/assets/eea4e0de-e19f-43ff-8a2b-ea5193998166" />
 
 ## Quick start
 
+The API is the same in both environments. Only storage differs: Node writes
+encrypted files to disk, the browser writes to IndexedDB.
+
+### Node
+
 ```ts
 import { Workspace } from "wative-core";
+import "wative-core/node"; // installs the filesystem backend
 
 const ws = await Workspace.open({ password: "your-workspace-password" });
 
@@ -34,6 +40,90 @@ const evmAddress = wallet.addresses.find((a) => a.vm === "evm")!;
 const svmAddress = wallet.addresses.find((a) => a.vm === "svm")!;
 
 await ws.lock();
+```
+
+### Browser
+
+```ts
+import { Workspace, IdbProvider } from "wative-core";
+
+const provider = await IdbProvider.create("my-dapp");
+const ws = await Workspace.open({ provider, password: "your-workspace-password" });
+
+// everything from here is identical to the Node example
+const account = await ws.accounts.create(
+  "Trading Desk",
+  "your-workspace-password",
+  "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+);
+
+await account.deriveWallets(5);
+await ws.lock();
+```
+
+### What differs
+
+|                | Node                                   | Browser                          |
+| -------------- | -------------------------------------- | -------------------------------- |
+| Extra import   | `import "wative-core/node"`            | none                             |
+| Storage        | encrypted files on disk                | IndexedDB                        |
+| Where it lives | `Workspace.open({ path })`, or default | `IdbProvider.create(name)`       |
+| Extra setup    | none                                   | `Buffer` polyfill                |
+| Keys can vanish| no                                     | yes — storage is evictable       |
+
+`HybridProvider` and `FileSink` are also re-exported from the package root in
+Node, so existing imports keep working. New code should take them from
+`wative-core/node`.
+
+### Browser: the Buffer polyfill
+
+The Solana libraries read a global `Buffer`, which browsers do not provide.
+
+```bash
+pnpm add buffer
+```
+
+```ts
+// once, before importing wative-core
+import { Buffer } from "buffer";
+globalThis.Buffer = Buffer;
+```
+
+### Browser: keeping keys from disappearing
+
+Browser storage is not permanent. A browser may clear IndexedDB when disk runs
+low, and Safari clears script-writable storage after about seven days without
+user interaction. Losing it means losing the keys.
+
+`IdbProvider.create()` asks the browser for persistent storage and reports the
+answer:
+
+```ts
+const provider = await IdbProvider.create("my-dapp");
+provider.durability; // "persistent" | "best-effort"
+```
+
+Creating a **new** workspace in non-persistent storage is refused, because keys
+written there can disappear without warning:
+
+```ts
+// throws STORAGE_NOT_DURABLE when the browser refused persistence
+await Workspace.open({ provider, password });
+
+// proceed anyway — only if the keys are backed up elsewhere
+await IdbProvider.create("my-dapp", { acknowledgeEvictionRisk: true });
+```
+
+Opening a workspace that already exists is never blocked.
+
+Browsers are far more likely to grant persistence when the request comes from a
+user action, so call `IdbProvider.create()` from a click rather than on page
+load. Whatever the answer, give users a backup — `exportContainer()` returns the
+encrypted records, and they import into a Node workspace unchanged:
+
+```ts
+const backup = await provider.exportContainer(); // still encrypted
+await otherProvider.importContainer(backup);     // same password opens it
 ```
 
 ## Runnable examples
@@ -403,10 +493,4 @@ import { TokenProgram, Token2022Program } from "wative-core/artifacts/svm";
 
 ## License
 
-[Modified MIT](./LICENSE) — MIT, with one addition.
-
-Free to use, modify and ship, including commercially. The only condition: if a
-product or service you build with it makes **more than $50,000 per month**, you
-must show the label **"Wative"** somewhere your users can see it in normal use.
-
-Below that, nothing is required beyond keeping the copyright notice.
+[BUSL-1.1](./LICENSE) — Business Source License 1.1.
