@@ -8,6 +8,11 @@ Everything here — `dist/`, `tests/`, `README.md`, `CHANGELOG.md`,
 `package.json` — is **build output**, published from a separate private
 development repository.
 
+That means **pull requests against this repository cannot be merged**. Any edit
+made here is overwritten the next time a release is built, so a PR would be lost
+even if we agreed with it. We'd rather tell you that up front than let you spend
+the effort.
+
 ## What is useful
 
 - **Bug reports.** Open an issue. Include the version, your Node version and OS,
