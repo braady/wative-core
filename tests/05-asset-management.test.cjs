@@ -7,7 +7,7 @@ const { mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-const { Workspace, Network, Asset } = require("../dist/index.cjs");
+const { Workspace, Network, Asset } = require("wative-core");
 
 test("asset — pre-loaded tokens per network", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-asset-builtin-"));

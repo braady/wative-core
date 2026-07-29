@@ -6,7 +6,7 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const { Workspace, Provider, Record, WativeError } = require("../dist/index.cjs");
+const { Workspace, Provider, Record, WativeError } = require("wative-core");
 
 /**
  * In-memory `Provider` implementation. Stores records in a Map under

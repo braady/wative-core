@@ -7,7 +7,7 @@ const { mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-const { Workspace } = require("../dist/index.cjs");
+const { Workspace } = require("wative-core");
 
 test("quick start — open, create HD account, derive wallets, lock", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-quickstart-"));

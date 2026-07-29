@@ -1,24 +1,20 @@
 import assert from "node:assert/strict";
-import { access } from "node:fs/promises";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { fileURLToPath } from "node:url";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 async function importDist() {
-  for (const rel of ["../../../dist/index.js", "../dist/index.js"]) {
-    const candidate = path.resolve(here, rel);
-    try {
-      await access(candidate);
-      return import(pathToFileURL(candidate).href);
-    } catch {
-      // Try the next layout: source repo vs release repo.
-    }
-  }
-  throw new Error("dist/index.js not found for ESM runtime smoke test");
+  // Import by PACKAGE SPECIFIER, not by file path. The root entry is
+  // condition-split: a raw path to dist/index.js bypasses the exports map and
+  // lands on the browser build, which deliberately has no filesystem backend.
+  // "wative-core" resolves through the node condition, which is what an ESM
+  // consumer actually gets — and still loads real ESM, so this keeps testing
+  // that the dist needs no CJS require shims.
+  return import("wative-core");
 }
 
 const PASSWORD = "wsp-pwd";

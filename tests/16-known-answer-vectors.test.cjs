@@ -15,7 +15,7 @@ const { mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-const { Workspace } = require("../dist/index.cjs");
+const { Workspace } = require("wative-core");
 
 // The canonical all-zero BIP-39 entropy phrase. Publicly known — never fund it.
 const MNEMONIC =
