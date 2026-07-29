@@ -1,88 +1,55 @@
-Business Source License 1.1
+Modified MIT License
 
-Copyright 2026 Brady <brady.c@hedgue.com>
+Copyright (c) 2026 Brady <brady.c@hedgue.com>
 
-Licensed under the Business Source License 1.1 (the "License"); you may not use this file except in compliance with the License.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-You may obtain a copy of the License at:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-    https://www.mariadb.com/bsl11
+Our only modification part is that, if the Software (or any derivative works
+thereof) is used for any of your commercial products or services that have
+more than 50,000 US dollars (or the equivalent in other currencies) in monthly
+revenue, you shall prominently display "Wative" on the user interface of such
+product or service.
 
-The Licensor grants you the right to copy, modify and distribute the Work under the terms of the License, subject to the following conditions:
+For the purpose of the paragraph above:
 
-1. Definitions.
+  a. "Monthly revenue" is measured per product or service, meaning the gross
+     revenue that the individual product or service incorporating the Software
+     generates in a calendar month — not the total revenue of the entity
+     operating it. An entity operating several products need only attribute
+     those products that individually cross the threshold.
 
-    "Change Date" means the earlier of (a) the date four years after the initial release of the Work under this License,
-    or (b) the date specified as the Change Date in the License.
+  b. "Prominently display" means the "Wative" label is visible to an ordinary
+     user in the normal course of using the product or service, without
+     requiring that user to open a settings pane, an "About" dialog, a licenses
+     screen, source code, or documentation. Placement, size and styling are
+     otherwise at your discretion.
 
-    "Covered Code" means the original Work or Modifications, or any work that is derived from or based on the
-    Work and includes any portion thereof.
+  c. For a product or service with no user interface — a backend service, an
+     API, a library, or a command-line tool — the requirement is satisfied by
+     displaying "Wative" in the product's public documentation, in its startup
+     or version output, or on an equivalent surface its users routinely see.
 
-    "License" means this Business Source License 1.1.
+  d. The obligation applies only while the product or service remains above the
+     threshold, and takes effect from the start of the calendar month following
+     the month in which the threshold is first crossed.
 
-    "Licensor" means the copyright owner or entity granting the rights under this License.
+  e. This requirement grants no other right in any trademark, service mark, or
+     logo of the copyright holder, and does not permit you to state or imply
+     that your product or service is endorsed by, affiliated with, or produced
+     by the copyright holder.
 
-    "Modification" means any work that results from making additions to, deletions from, or other changes to the
-    Work.
-
-    "Production Use" means use of the Work in any environment other than one that is solely for evaluation,
-    development, testing or demonstration purposes.
-
-    "Work" means the original software and documentation, including the source code distributed by the Licensor,
-    as made available under this License.
-
-2. Grant of Rights.
-
-    Subject to the terms and conditions of this License, the Licensor grants You a non-exclusive, non-transferable,
-    worldwide, royalty-free license to:
-
-    a. reproduce the Work;
-    b. prepare Modifications of the Work;
-    c. distribute copies of the Work and Modifications;
-    d. publicly display and perform the Work and Modifications.
-
-3. Conditions and Use.
-
-    a. The rights granted in Section 2 do not include the right to use the Work in Production Use until the Change Date.
-    "Production Use" includes use of the Work to provide services to third parties, including SaaS offerings, or
-    any use that generates revenue directly or indirectly from the Work.
-
-    b. Prior to the Change Date, You may use the Work only for internal evaluation, development, testing, or
-    demonstration purposes.
-
-    c. You may not use the Work in connection with content that is unlawful, discriminatory, infringing, or harmful.
-
-4. Change Date.
-
-    The Change Date for this Work is 2028-04-29.
-
-    On the Change Date, all restrictions on Production Use under this License shall terminate, and the Work shall
-    be automatically licensed under the terms of a license identified by the Licensor in the Work or, if no such
-    license is identified, under the Mozilla Public License 2.0.
-
-5. Source Code Availability.
-
-    If You distribute the Work or Modifications, the source code for the distributed Work must be made available in
-    a reasonable and accessible manner.
-
-6. Attribution.
-
-    You must retain the above copyright notice, this License, and any notices or disclaimers in the Work.
-
-7. No Warranty.
-
-    THE WORK IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
-    THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. THE LICENSOR SHALL
-    NOT BE LIABLE FOR ANY CLAIMS, DAMAGES, OR OTHER LIABILITY ARISING FROM THE USE OF THE WORK.
-
-8. Termination.
-
-    Any rights granted under this License will terminate automatically if You fail to comply with any term(s) of
-    this License. Upon termination, you must cease all use of the Work and destroy any copies of the Work in your
-    possession.
-
-9. Miscellaneous.
-
-    This License represents the complete agreement concerning the use of the Work and supersedes all prior agreements
-    or understandings. If any provision of this License is held to be unenforceable, the remaining provisions shall
-    remain in full force and effect.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

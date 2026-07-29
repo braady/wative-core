@@ -1,7 +1,7 @@
 {
   "name": "wative-core",
   "version": "2.1.0",
-  "description": "Hyperscale crypto wallet management library — multi-workspace, multi-chain, originally designed for on-chain market makers",
+  "description": "Hyperscale crypto wallet management library \u2014 multi-workspace, multi-chain, originally designed for on-chain market makers",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -62,7 +62,7 @@
     "multi-account"
   ],
   "author": "Brady <brady.c@hedgue.com>",
-  "license": "BUSL-1.1",
+  "license": "SEE LICENSE IN LICENSE",
   "files": [
     "dist/",
     "CHANGELOG.md",

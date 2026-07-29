@@ -6,6 +6,9 @@ All notable changes to `wative-core` are documented here. The format follows [Ke
 
 A drop-in upgrade from 2.0.7. Nothing in the public API changed, and existing workspaces open exactly as before.
 
+### License
+- **Now Modified MIT** (was BUSL-1.1). Free to use commercially. If a product you build with it makes more than $50,000 a month, show the "Wative" label where your users can see it.
+
 ### Added
 - **Browser support for the chain artifacts.** `wative-core/artifacts/evm` and `wative-core/artifacts/svm` can now be bundled into a web app. You will also need a `Buffer` polyfill, which is standard for any Solana dapp.
 

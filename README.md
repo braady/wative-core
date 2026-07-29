@@ -403,4 +403,10 @@ import { TokenProgram, Token2022Program } from "wative-core/artifacts/svm";
 
 ## License
 
-[BUSL-1.1](./LICENSE) — Business Source License 1.1.
+[Modified MIT](./LICENSE) — MIT, with one addition.
+
+Free to use, modify and ship, including commercially. The only condition: if a
+product or service you build with it makes **more than $50,000 per month**, you
+must show the label **"Wative"** somewhere your users can see it in normal use.
+
+Below that, nothing is required beyond keeping the copyright notice.
