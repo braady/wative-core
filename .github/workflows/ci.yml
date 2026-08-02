@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly. The published package depends on a moving dependency graph, so a
+    # green build today is not evidence it still installs cleanly next month.
+    - cron: "0 6 * * 1"
+
+jobs:
+  examples:
+    name: examples against this build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["22.12", "24"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      # --ignore-scripts: nothing in the dependency tree should need to run a
+      # lifecycle script to install, and a wallet library is the last place to
+      # let one.
+      - run: npm install --omit=dev --ignore-scripts
+      - name: Run the runnable examples
+        run: node --test examples/*.test.cjs examples/*.test.mjs
+
+  published:
+    name: examples against the published npm package
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+      # Installs wative-core from the registry into a clean directory and runs
+      # the SAME example files against it. This is the check the repo's own test
+      # run cannot make: it exercises the actual tarball — its `files` list, its
+      # `exports` map, its dependency resolution — and so catches a publish that
+      # shipped the wrong contents.
+      - name: Install the published package
+        run: |
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          npm init -y >/dev/null
+          npm install wative-core@latest --ignore-scripts
+      - name: Run the examples against it
+        run: |
+          cp examples/*.test.cjs examples/*.test.mjs /tmp/consumer/
+          cd /tmp/consumer
+          node --test *.test.cjs *.test.mjs

@@ -4,7 +4,7 @@ Thanks for taking an interest in `wative-core`.
 
 ## This repository is generated
 
-Everything here — `dist/`, `tests/`, `README.md`, `CHANGELOG.md`,
+Everything here — `dist/`, `examples/`, `README.md`, `CHANGELOG.md`,
 `package.json` — is **build output**, published from a separate private
 development repository.
 
@@ -17,7 +17,7 @@ the effort.
 
 - **Bug reports.** Open an issue. Include the version, your Node version and OS,
   a minimal reproduction, what you expected, and what happened. Reproductions
-  based on the files in [`tests/`](./tests) are ideal — they run standalone.
+  based on the files in [`examples/`](./examples) are ideal — they run standalone.
 - **API and documentation feedback.** If something in the README is wrong,
   unclear, or teaches a pattern that doesn't work, an issue is genuinely
   valuable — that class of problem is easy for us to miss from the inside.

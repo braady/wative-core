@@ -1,6 +1,87 @@
 # Wative Core 2
 
+[![npm](https://img.shields.io/npm/v/wative-core?color=cb3837&logo=npm)](https://www.npmjs.com/package/wative-core)
+[![CI](https://github.com/braady/wative-core/actions/workflows/ci.yml/badge.svg)](https://github.com/braady/wative-core/actions/workflows/ci.yml)
+[![node](https://img.shields.io/node/v/wative-core)](https://nodejs.org)
+[![license](https://img.shields.io/badge/license-Modified%20MIT-blue)](./LICENSE)
+
 Hyperscale crypto wallet management library — multi-workspace, multi-chain, originally designed for on-chain market makers.
+
+Runs in Node and in the browser. Wallets live in one encrypted container: on disk
+under Node, in IndexedDB in a browser, or in any storage you plug in yourself.
+
+## How it fits together
+
+A workspace is the container. Everything else nests inside it:
+
+```
+Workspace                     one encrypted container, one password
+│
+├── Account                   an identity — HD (from a mnemonic) or PK (imported keys)
+│   └── Wallet                one slot in that account
+│       └── Address           one key on one chain — this is what signs
+│
+├── Network                   the chains you can reach (RPC, chain id)
+└── Asset                     the tokens tracked on each network
+```
+
+### Two kinds of Account
+
+The nesting is the same for both, but a `Wallet` means something different in
+each — and that is the part most people get wrong first.
+
+**HD** — one mnemonic, many slots. A `Wallet` is a derivation slot, and it holds
+the EVM *and* Solana keys derived from that same slot:
+
+```
+Account "Trading Desk"   (HD)          one mnemonic
+├── Wallet 0                           m/44'/60'/0'/0/0
+│   ├── Address  vm: "evm"             0x9858EfFD…
+│   └── Address  vm: "svm"             HAgk14JpMQ…      same slot, both chains
+├── Wallet 1                           m/44'/60'/0'/0/1
+│   ├── Address  vm: "evm"             0x6Fac4D18…
+│   └── Address  vm: "svm"             Hh8QwFUA6…
+└── …                                  account.deriveWallets(n)
+```
+
+**PK** — imported keys. A `Wallet` is one key you handed in, on the one chain
+you imported it for. Wallets have no relationship to each other:
+
+```
+Account "Cold Storage"   (PK)          no mnemonic
+├── Wallet 0                           the key passed to accounts.create()
+│   └── Address  vm: "evm"             0x90F8bf6A…
+├── Wallet 1                           account.importPrivateKey(pk, "evm")
+│   └── Address  vm: "evm"             0xFFcf8FDE…
+└── Wallet 2                           account.importPrivateKey(pk, "svm")
+    └── Address  vm: "svm"             7WktogJEd…      one chain per wallet
+```
+
+A PK account can hold as many keys as you like, and they can be on different
+chains — but it refuses the same identity twice.
+
+|                        | HD                            | PK                              |
+| ---------------------- | ----------------------------- | ------------------------------- |
+| Created from           | a BIP-39 mnemonic             | one private key                 |
+| Grows with             | `deriveWallets(n)`            | `importPrivateKey(pk, vm)`      |
+| A `Wallet` is          | a derivation slot             | one imported key                |
+| Addresses per `Wallet` | **2** — one evm, one svm      | **1** — the chain you imported  |
+| `dumpMnemonic()`       | ✔                             | throws `UNSUPPORTED_OP`         |
+| `sliceWallets(n)`      | ✔                             | throws `UNSUPPORTED_OP`         |
+| `importPrivateKey()`   | throws `UNSUPPORTED_OP`       | ✔                               |
+
+```ts
+// HD — one slot gives you the matching keys on both chains
+const hd = await ws.accounts.create("Trading Desk", password, mnemonic);
+await hd.deriveWallets(5);                       // slots 1..5, alongside slot 0
+hd.wallets[0].addresses.find((a) => a.vm === "evm");
+hd.wallets[0].addresses.find((a) => a.vm === "svm");
+
+// PK — each import is its own wallet, on one chain
+const pk = await ws.accounts.create("Cold Storage", password, privateKey);
+await pk.importPrivateKey(anotherEvmKey, "evm"); // -> a new Wallet
+await pk.importPrivateKey(aSolanaKey, "svm");    // -> another new Wallet
+```
 
 ## Install
 
@@ -128,7 +209,7 @@ await otherProvider.importContainer(backup);     // same password opens it
 
 ## Runnable examples
 
-A `tests/` folder ships with the package — runnable JavaScript files demonstrating every domain's use cases. Read them top-to-bottom as walkthroughs, or run them as integration tests via Node's built-in test runner.
+An `examples/` folder ships with the package — runnable JavaScript files demonstrating every domain's use cases. Read them top-to-bottom as walkthroughs, or run them as integration tests via Node's built-in test runner.
 
 Copy them out of `node_modules` first, then run the whole set:
 
@@ -140,10 +221,10 @@ node --test wative-examples/
 The copy is required: Node's test runner skips anything under `node_modules`, so pointing `--test` there finds no files. To run a single example without copying, execute it directly — a `node:test` file runs itself:
 
 ```bash
-node node_modules/wative-core/tests/01-quick-start.test.cjs
+node node_modules/wative-core/examples/01-quick-start.test.cjs
 ```
 
-Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, and package resolution. See [tests/README.md](./tests/README.md) for the index.
+Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, and package resolution. See [examples/README.md](./examples/README.md) for the index.
 
 ## What you can do
 

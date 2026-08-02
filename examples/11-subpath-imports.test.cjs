@@ -5,8 +5,11 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const evmArtifacts = require("../dist/artifacts/evm/index.cjs");
-const svmArtifacts = require("../dist/artifacts/svm/index.cjs");
+// Imported by SUBPATH, which is the whole point of this example — and what a
+// consumer writes. A relative path into dist/ would resolve here but nowhere
+// else, so it would pass in-repo while failing for every real installation.
+const evmArtifacts = require("wative-core/artifacts/evm");
+const svmArtifacts = require("wative-core/artifacts/svm");
 
 test("subpath import — evm artifacts expose a usable ERC20 contract", () => {
   assert.ok(evmArtifacts.ERC20);
