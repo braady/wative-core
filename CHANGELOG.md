@@ -2,6 +2,17 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] — 2026-07-29
+
+Documentation and packaging only — the library code is identical to 2.2.0.
+
+### Changed
+- The runnable examples moved from `tests/` to `examples/`; update any path references.
+- Clearer README: how Workspace, Account, Wallet and Address relate, and when to use a recovery-phrase account versus an imported-key one.
+
+### Fixed
+- One example failed when run from an installed copy.
+
 ## [2.2.0] — 2026-07-28
 
 Runs in the browser now. Existing Node code keeps working unchanged.
