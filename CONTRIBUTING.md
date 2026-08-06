@@ -30,7 +30,12 @@ Do **not** open a public issue. See [SECURITY.md](./SECURITY.md).
 
 ## Licence
 
-The Work is distributed under the Business Source Licence 1.1 — see
-[LICENSE](./LICENSE). It is source-available, not OSI open source: production
-use is restricted until the Change Date stated in the licence. Please check that
-the terms fit your intended use before building on it.
+Contributions are accepted under the project's licence, the Modified MIT in
+[LICENSE](./LICENSE). It is standard MIT with one added condition: a product or
+service earning more than US$50,000 (or equivalent) in monthly revenue must
+prominently display "Wative" in its user interface. There is no restriction on
+production use and no change date.
+
+The `LICENSE` file also carries third-party notices for the compiled components
+embedded in `dist/`. Those are governed by their own licences and the condition
+above does not extend to them.
