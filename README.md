@@ -152,9 +152,25 @@ await ws.lock();
 | Extra setup    | none                                   | `Buffer` polyfill                |
 | Keys can vanish| no                                     | yes — storage is evictable       |
 
-`HybridProvider` and `FileSink` are also re-exported from the package root in
-Node, so existing imports keep working. New code should take them from
-`wative-core/node`.
+`HybridProvider`, `HybridProviderV3` and `FileSink` are re-exported from the
+package root in Node.
+
+Take the provider from the **same entry point** as `Workspace`:
+
+```ts
+// Right — one entry point.
+import { Workspace, HybridProvider } from "wative-core";
+const ws = await Workspace.open(new HybridProvider("~/wallets"), password);
+
+// Wrong — rejected with a PARAMETER_ERROR naming the fix.
+import { Workspace } from "wative-core";
+import { HybridProvider } from "wative-core/node";
+```
+
+Each entry point is a separate bundle with its own class identities and module
+state, so a provider built by one is not recognised by a `Workspace` from the
+other. `Workspace.open` rejects it with an error naming the fix. A bare
+`import "wative-core/node"` for its side-effects is unaffected.
 
 ### Browser: the Buffer polyfill
 
@@ -206,6 +222,128 @@ encrypted records, and they import into a Node workspace unchanged:
 const backup = await provider.exportContainer(); // still encrypted
 await otherProvider.importContainer(backup);     // same password opens it
 ```
+
+## Key derivation
+
+Passwords are stretched with Argon2id (RFC 9106) at t=3, m=64 MiB, p=1 before
+they ever touch a key. That is deliberately expensive, and an account unlock
+runs one derivation per sealed secret — so the implementation matters.
+
+By default it runs on a vendored WebAssembly build: no native binary, no build
+step, nothing to install. Measured over a full workspace lifecycle it is about
+**25x** faster than the pure-JS implementation it replaced.
+
+### Browser: grant `'wasm-unsafe-eval'`
+
+```
+Content-Security-Policy: script-src 'self' 'wasm-unsafe-eval'
+```
+
+Without it the browser blocks WebAssembly compilation entirely — synchronously
+and asynchronously, main thread and worker alike. **Nothing throws.** Key
+derivation quietly falls back to a pure-JS implementation that produces
+identical bytes roughly 17x slower, so unlocking a wallet with a dozen addresses
+goes from under a second to tens of seconds. The fallback is announced once on
+the console and reported permanently by `argon2BackendInfo()`.
+
+## Upgrading to 2.3.0
+
+**v1 containers can no longer be opened.** Support for the v1 envelope
+(PBKDF2-HMAC-SHA256, written by wative-core 1.x) was removed and there is no
+migration path in this release. Containers written by any 2.x version are v2 and
+open unchanged.
+
+If you hold a v1 container, recover it with **2.2.x or earlier** before
+upgrading. `exportContainer()` will not do it — it copies sealed bytes without
+decrypting, so the export is as unreadable as the original. Use the accessors
+that return plaintext:
+
+```ts
+// under wative-core 2.2.x — NOT 2.3.0, which can no longer open a v1 container
+import { Workspace, HybridProvider } from "wative-core";
+
+const ws = await Workspace.open(new HybridProvider("~/wallets"), password);
+
+for (const account of ws.accounts) {
+  await account.tryUnlock(password);
+
+  // HD accounts: the mnemonic regenerates every derived key, so it is the only
+  // thing you need.
+  if (account.organizationType === "HD") {
+    console.log(account.slug, "mnemonic:", account.dumpMnemonic());
+    continue;
+  }
+
+  // PK accounts: there is no mnemonic, so every imported key must be kept.
+  // `dumpPrivateKey` lives on the WALLET and takes the VM of the address you
+  // want — a wallet holds at most one address per VM.
+  for (const wallet of account.wallets) {
+    for (const address of wallet.addresses) {
+      console.log(account.slug, wallet.id, address.vm, wallet.dumpPrivateKey(address.vm));
+    }
+  }
+}
+```
+
+Keep that material somewhere safe, upgrade, then re-import it with
+`accounts.create(...)` and `importPrivateKey(...)`.
+
+Three public members were removed with v1: `Provider.passwordTanren`,
+`ContainerProvider.passwordTanren` and `HybridProvider.kdfIterations`. All three
+existed only to expose the PBKDF2 derivation.
+
+### One derivation per container: `HybridProviderV3` (Node only)
+
+```ts
+import { Workspace, HybridProviderV3 } from "wative-core";
+
+const ws = await Workspace.open(new HybridProviderV3("~/wallets"), password);
+```
+
+The default provider derives an Argon2 key per sealed secret, so unlocking an
+account costs one derivation per address — at production parameters that is
+essentially the whole cost, and it grows with the account. `HybridProviderV3`
+derives once per container instead. Measured: unlocking a 50-address account
+goes from 7.3 s to 144 ms, and the v3 figure does not grow with the address
+count.
+
+It is opt-in, and Node-only: it derives through native `@node-rs/argon2`, which
+has no browser build. In a browser use `HybridProvider`, which needs no binary
+and no install and is already about 25x faster than what preceded it.
+
+⚠️ **The speedup applies to records written as v3, not to ones you already
+have.** Pointing `HybridProviderV3` at a container built by 2.x keeps every
+existing secret on its own salt, so it keeps costing one derivation each — the
+container still opens, it just does not get faster. Rewriting an account's
+secrets with `account.resetPassword(old, new)` converts them. A container
+reaches one derivation once all of its records have been written as v3, which
+happens on its own only for containers created under v3.
+
+The first v3 unlock of an existing container costs one extra derivation, once,
+and converts its CONFIG record to v3 — after which wative-core 2.2.x and earlier
+can no longer open it.
+
+Reads do not depend on the choice — every record carries its own version byte,
+so either 2.3.0 provider opens either format, in both directions. ⚠️ But **older
+library versions cannot read v3**: wative-core 2.2.x and earlier know only v1 and
+v2 and will fail with `Unknown envelope version: 3`. Adopting v3 is a one-way
+door with respect to the library version.
+
+### Checking which implementation ran
+
+```ts
+import { argon2BackendInfo } from "wative-core";
+
+argon2BackendInfo();
+// { backend: "wasm", wasm: true, overrides: [] }
+// { backend: "noble", wasm: false, reason: "...", overrides: [] }  ← degraded
+// { backend: "unresolved", wasm: false, ..., overrides: ["node-rs"] }
+```
+
+`backend` is the process-wide default. A provider may carry its own — a
+`HybridProviderV3` does — so check **`overrides`** to confirm the native path
+took. It is a pure read and resolves nothing, so before the first unlock it
+honestly answers `"unresolved"`.
 
 ## Runnable examples
 
@@ -568,10 +706,11 @@ import { TokenProgram, Token2022Program } from "wative-core/artifacts/svm";
 
 ## Compatibility notes
 
+- **Content-Security-Policy (browser)**: grant `'wasm-unsafe-eval'` in `script-src`, or key derivation silently degrades to a ~17x slower pure-JS path. See [Key derivation](#key-derivation).
 - **Runtime**: Node.js 22.12+. Deno / Bun / browser support is partial. Some chain libraries that ship as compiled dependencies do not have universal builds yet.
 - **Platform builds**: a few compiled dependencies lack pre-built binaries for Windows-ARM64 and Alpine-musl. Most installs on macOS / Linux x64 / Linux ARM64 won't notice.
 - **One process at a time**: opening the same workspace from two Node processes simultaneously isn't supported.
 
 ## License
 
-[BUSL-1.1](./LICENSE) — Business Source License 1.1.
+[Modified MIT](./LICENSE) — MIT terms with one added condition: products or services earning over US$50,000 monthly revenue must display "Wative" in their user interface. Everything else is standard MIT. The `LICENSE` file also carries third-party notices for the compiled components embedded in `dist/`.
