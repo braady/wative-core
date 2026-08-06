@@ -2,32 +2,56 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.1] — 2026-07-29
+## [2.3.0] — 2026-08-06
 
-Documentation and packaging only — the library code is identical to 2.2.0.
+Unlocking is much faster. Drop-in from 2.2.x; wallets from 1.x need a manual step first.
+
+### Added
+- An optional storage format that keeps unlocking fast however many addresses an account holds.
 
 ### Changed
-- The runnable examples moved from `tests/` to `examples/`; update any path references.
-- Clearer README: how Workspace, Account, Wallet and Address relate, and when to use a recovery-phrase account versus an imported-key one.
+- Unlocking is roughly 25x faster. In a browser, allow `'wasm-unsafe-eval'` in your Content-Security-Policy, or it quietly falls back to a much slower path.
+
+### Removed
+- Wallets created by 1.x can no longer be opened — export their secrets with 2.2.x before upgrading.
+
+## [2.2.1] — 2026-07-29
+
+Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no source changed, so the published bundles were deliberately left as built and verified for that release rather than rebuilt and re-obfuscated for no reason.
+
+### Changed
+- **The runnable examples ship as `examples/` instead of `tests/`.** They are the only human-readable code in the published package, and `tests/` reads as internal scaffolding nobody is invited to open. The `files` allowlist follows. Consumers who referenced `wative-core/tests/...` by path must update; nothing importable from the package entry changed.
+- **README** gains npm / CI / node / license badges, an ASCII diagram of the containment model (`Workspace > Account > Wallet > Address`), and a section distinguishing the two account kinds. The HD/PK difference is not in the nesting but in what a `Wallet` *means* — a derivation slot holding both an EVM and a Solana key under HD, versus a single imported key on one chain under PK. That was previously described in prose only, and it is the thing new users get wrong first.
 
 ### Fixed
-- One example failed when run from an installed copy.
+- **`11-subpath-imports` example** imported the chain artifacts by relative path into `dist/` rather than by subpath, despite its own header documenting the subpath form. It resolved inside the repo and nowhere else, so it passed in-repo while being broken for every real installation. Caught by the new published-package CI job before release.
+
+### Internal
+- `.github/workflows/ci.yml`: runs the examples against this build on Node 22.12 and 24, and separately installs `wative-core` from the registry into a clean directory and runs the same files against it — exercising the real tarball's `files` list, `exports` map and dependency resolution. Runs weekly as well, since a published package sits on a moving dependency graph.
+- The private development repo is now guarded against reaching npm (`private`, a `prepublishOnly` refusal, and a `publishConfig` registry pointing nowhere). It shares a package name with the public repo, so a stray publish there would have succeeded and replaced the package with unobfuscated bundles.
 
 ## [2.2.0] — 2026-07-28
 
-Runs in the browser now. Existing Node code keeps working unchanged.
+> **The browser entry is here.** The main entry now resolves for a browser with **zero** unresolvable Node builtins, and ships an IndexedDB storage backend. **No public API was removed** — existing Node imports keep working unchanged, so this remains a minor.
 
 ### Added
-- **Browser support.** The library works in a web app, keeping wallets in the browser's own storage. See the browser example in the Quick start.
-- **Backup and restore.** Export a workspace as encrypted data and load it somewhere else. A workspace created in a browser opens on a desktop, and the other way round.
-- **Writing your own storage is simpler.** A custom backend now needs six small methods; encryption and file layout are handled for you.
+- **`IdbProvider` — IndexedDB storage backend.** Created via the async factory `IdbProvider.create(name, opts)`, which negotiates durable storage before returning. Exposes `durability` (`"persistent" | "best-effort"`) and a `quota` snapshot.
+- **`ContainerProvider`** — the storage-agnostic base extracted from `HybridProvider`. A custom backend now implements only six primitives (`_exist`, `_listItems`, `_read`, `_write`, `_remove`, `_ensureDir`) and inherits record framing, the encrypted envelope and its identity AAD, the key layout and the container session. Previously `Provider` declared the record API abstract, so a custom provider had to reimplement encryption — which is why the shipped custom-provider example carried a hand-rolled XOR cipher and a warning to use a real one.
+- **`exportContainer()` / `importContainer()`** on `ContainerProvider`. Sealed records move verbatim — never decrypted, so no key is materialized and nothing is re-keyed. Because every backend shares one framing, a container round-trips IndexedDB ⇄ filesystem and opens with the same password. Import refuses a non-empty target without `{ overwrite: true }` and rejects entries outside the container layout.
+- **`wative-core/node` subpath** — `HybridProvider`, `FileSink` and the default-workspace-path resolver.
+- **`STORAGE_NOT_DURABLE`** error code.
 
 ### Changed
-- `HybridProvider` and `FileSink` are still available from the main import in Node. They also live at `wative-core/node`, which is where new code should get them.
+- **The root entry is condition-split.** A browser bundler resolves the universal core; Node resolves an entry that still re-exports `HybridProvider` and `FileSink`, so `import { Workspace, HybridProvider } from "wative-core"` compiles and runs exactly as before. Those two re-exports are **deprecated** in favour of `wative-core/node` and will be removed in a future major. Condition order is significant — `browser` is declared before `node`, since resolvers take the first match.
+- `tsconfig` `lib` gains `DOM`; the browser is now a real target.
 
-### Please note
-- Browsers can clear their own storage. Creating a **new** wallet in a browser is blocked unless the browser promises to keep the data, or you explicitly accept the risk — an existing wallet always opens. Give users a way to back up.
-- A `Buffer` polyfill is needed in the browser. One line, shown in the Quick start.
+### Browser notes
+- Creating a **new** workspace in evictable storage is **refused** with `STORAGE_NOT_DURABLE` unless `{ acknowledgeEvictionRisk: true }` is passed. Opening an existing workspace is never blocked. Browser storage is evictable and this library holds private keys: Chrome and Firefox treat IndexedDB as best-effort unless `navigator.storage.persist()` is granted, Safari caps script-writable storage at roughly 7 days without user interaction, and private-mode windows may have no IndexedDB at all. Request persistence from a user gesture, and use `exportContainer()` for a durable backup.
+- A **`Buffer` polyfill is still required** — `@solana/web3.js` and `@coral-xyz/anchor` read the global. Standard for any Solana dapp.
+
+### Internal
+- `scripts/browser-e2e.mjs` (`pnpm test:browser`) bundles the real dist through the `browser` condition, loads it into headless Chromium and drives a full lifecycle against the browser's own IndexedDB, asserting the same published BIP-44 vectors the Node suite pins. Resolving is not the same as running — a bundle can resolve cleanly and still fail at runtime, as the 2.1.0 obfuscation incident showed. Wired into `prepublishOnly`.
+- `tests/packaging/entry-resolution.test.ts` bundles the dist under each platform to prove the export map lands where intended; asserting its shape is not the same as asserting a resolver's behaviour.
 
 ## [2.1.0] — 2026-07-28
 
