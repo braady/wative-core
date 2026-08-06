@@ -11,7 +11,16 @@
 const test = require("node:test");
 const assert = require("node:assert");
 
-const SUBPATHS = ["wative-core", "wative-core/artifacts/evm", "wative-core/artifacts/svm"];
+// "wative-core/node" is where HybridProviderV3 lives after the breaking
+// refactor that folded NodeHybridProvider into it. It was missing here, so the
+// subpath carrying the release's headline feature was the one subpath nothing
+// resolved.
+const SUBPATHS = [
+  "wative-core",
+  "wative-core/node",
+  "wative-core/artifacts/evm",
+  "wative-core/artifacts/svm",
+];
 
 test("every declared subpath resolves by bare name under require(), to the CJS build", () => {
   for (const specifier of SUBPATHS) {
@@ -22,6 +31,24 @@ test("every declared subpath resolves by bare name under require(), to the CJS b
     );
     const mod = require(specifier);
     assert.ok(mod && typeof mod === "object", `${specifier} exported nothing`);
+  }
+});
+
+// A type used in a public signature but not exported is invisible to a
+// TypeScript consumer, who then cannot name what the method returns. That is not
+// visible from JavaScript, so it is asserted against the emitted declarations.
+test("every type named by a public signature is exported", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const dts = fs.readFileSync(path.join(__dirname, "..", "dist", "index.node.d.cts"), "utf8");
+  // The emitted declarations re-export rather than re-declare, so match the
+  // exported NAME. These names reach the bundle only from an explicit export in
+  // src/index.ts, so their presence is the thing being asserted.
+  for (const name of ["ContainerState", "Argon2BackendInfo"]) {
+    assert.ok(
+      new RegExp(`\\b${name}\\b`).test(dts),
+      `${name} appears in a public signature but is not exported from the package types`,
+    );
   }
 });
 
