@@ -1,7 +1,7 @@
 {
   "name": "wative-core",
-  "version": "2.3.0",
-  "description": "Hyperscale crypto wallet management library — multi-workspace, multi-chain, originally designed for on-chain market makers",
+  "version": "2.3.1",
+  "description": "Hyperscale crypto wallet management library \u2014 multi-workspace, multi-chain, originally designed for on-chain market makers",
   "type": "module",
   "main": "./dist/index.node.cjs",
   "module": "./dist/index.node.js",
