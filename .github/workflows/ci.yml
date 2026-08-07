@@ -27,8 +27,17 @@ jobs:
       # lifecycle script to install, and a wallet library is the last place to
       # let one.
       - run: npm install --omit=dev --ignore-scripts
+      # Through the shared checker, not a bare `node --test`. That command is not
+      # self-gating: a glob matching nothing reports `tests 0 / fail 0` and EXITS
+      # 0, an unmatched glob is ignored silently even when a sibling matches, a
+      # failing `{ todo: true }` test reports `fail 0`, and a timed-out test
+      # reports `fail 0` with `cancelled 1`. The checker enumerates the files,
+      # asserts pass == tests, and asserts the exact expected count.
+      #
+      # This is the only automated gate that runs the shipped bundle, so it is
+      # also the one that must not be able to pass while running nothing.
       - name: Run the runnable examples
-        run: node --test examples/*.test.cjs examples/*.test.mjs
+        run: node check-example-suite.mjs .
 
   published:
     name: examples against the published npm package
@@ -43,6 +52,10 @@ jobs:
       # run cannot make: it exercises the actual tarball — its `files` list, its
       # `exports` map, its dependency resolution — and so catches a publish that
       # shipped the wrong contents.
+      #
+      # Note this resolves `wative-core@latest`, i.e. the LAST PUBLISHED version,
+      # not the contents of this checkout. It can therefore go red without any
+      # change to this branch — that is the weekly cron's purpose.
       - name: Install the published package
         run: |
           mkdir -p /tmp/consumer && cd /tmp/consumer
@@ -50,6 +63,8 @@ jobs:
           npm install wative-core@latest --ignore-scripts
       - name: Run the examples against it
         run: |
-          cp examples/*.test.cjs examples/*.test.mjs /tmp/consumer/
+          mkdir -p /tmp/consumer/examples
+          cp examples/*.test.cjs examples/*.test.mjs /tmp/consumer/examples/
+          cp check-example-suite.mjs /tmp/consumer/
           cd /tmp/consumer
-          node --test *.test.cjs *.test.mjs
+          node check-example-suite.mjs .
