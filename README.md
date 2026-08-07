@@ -374,7 +374,7 @@ The library is organized around seven things you'll work with:
 - **`Address`** — an on-chain identity. Sign messages, build transactions, send them.
 - **`Network`** — chain metadata. 10 networks ship pre-loaded.
 - **`Asset`** — token metadata. 25 tokens ship pre-loaded.
-- **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`).
+- **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`). Tracking stops at first inclusion, so `whenFinalized()` rejects `UNSUPPORTED_OP` unless the node reported finality directly.
 
 Everything is encrypted on disk under your workspace password.
 

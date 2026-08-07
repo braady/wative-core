@@ -2,6 +2,62 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.3] — 2026-08-07
+
+A security fix for typed-data signing. Upgrade if you use `signTypedData`.
+
+### Security
+- **A signature could be produced for a value other than the one you were shown.**
+  When a typed-data payload declared a custom type whose name collides with one of
+  EIP-712's own built-in type names, a field of that type was not bound by the
+  signature: every value produced the same result, and an independent verifier
+  read the field as a fixed value nobody chose. The same collision could also
+  detach a signature from the chain and contract it was meant for. Because the
+  payload is normally supplied by the site requesting the signature, this did not
+  require anything unusual from the wallet holder. Such payloads are now rejected
+  with `PARAMETER_ERROR`, which is also what other EIP-712 implementations do, so
+  no payload that they accept is affected.
+
+### Fixed
+- **A retired wallet index could come back.** Dropping a wallet records its index
+  so it is never derived again. If another account setting was changed at the same
+  moment, that record could be lost, and the next `deriveWallets()` returned the
+  same address and private key as the wallet that was dropped.
+- **`sliceWallets` could empty an account.** It kept no minimum, so on an account
+  whose first wallet had already been dropped it could remove every remaining
+  wallet, leaving an account with no keys and reporting no error. It now refuses,
+  as `wallet.drop()` already did.
+- **Aborting a transaction no longer reports a confirmation afterwards.**
+  `abort()` could still fire `confirmed` listeners for a receipt that arrived
+  after the abort, having already reported the failure. The receipt itself is
+  still kept on the tracker — if the transaction did land, you can still see it —
+  but it is no longer announced as a confirmation, and the abort remains the
+  reported cause.
+- **Secrets are cleared in two cases where they were kept.** A wallet drop, or a
+  password reset, that failed because the workspace was locked at that moment
+  could leave key material in memory that a later `lock()` would not reach.
+
+### Changed
+- ⚠️ **`whenFinalized()` now rejects instead of never settling.** Transaction
+  tracking ends at first inclusion, so on EVM — and on Solana whenever the node
+  reports `confirmed` first — this promise previously neither resolved nor
+  rejected. It now rejects with `UNSUPPORTED_OP`. A Solana node that reports
+  finality directly still resolves as before.
+
+  **Migration.** `void tracker.whenFinalized().then(...)` used to do nothing,
+  because the promise never settled; it is now an unhandled rejection and will
+  terminate a Node process. Attach a `.catch()`, or await it. Awaiting it
+  alongside `whenConfirmed()` is unaffected.
+- **A `types.EIP712Domain` list that disagrees with your domain is now rejected**
+  rather than ignored. The domain separator has always been computed from the
+  domain object itself, so a mismatched list previously produced a signature that
+  your own verifier would reject, with nothing to point at the cause. An empty or
+  absent list still works, so the JSON-RPC shape is unaffected.
+
+## [2.3.2]
+
+Not released.
+
 ## [2.3.1] — 2026-08-07
 
 A types-only fix. Six types that appear in the public API could not be imported,
@@ -28,7 +84,7 @@ Unlocking is much faster. Drop-in from 2.2.x; wallets from 1.x need a manual ste
 
 ## [2.2.1] — 2026-07-29
 
-Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no source changed, so the published bundles were deliberately left as built and verified for that release rather than rebuilt and re-obfuscated for no reason.
+Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no source changed, so the published build was deliberately left exactly as built and verified for that release.
 
 ### Changed
 - **The runnable examples ship as `examples/` instead of `tests/`.** They are the only human-readable code in the published package, and `tests/` reads as internal scaffolding nobody is invited to open. The `files` allowlist follows. Consumers who referenced `wative-core/tests/...` by path must update; nothing importable from the package entry changed.
@@ -39,7 +95,7 @@ Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no sour
 
 ### Internal
 - `.github/workflows/ci.yml`: runs the examples against this build on Node 22.12 and 24, and separately installs `wative-core` from the registry into a clean directory and runs the same files against it — exercising the real tarball's `files` list, `exports` map and dependency resolution. Runs weekly as well, since a published package sits on a moving dependency graph.
-- The private development repo is now guarded against reaching npm (`private`, a `prepublishOnly` refusal, and a `publishConfig` registry pointing nowhere). It shares a package name with the public repo, so a stray publish there would have succeeded and replaced the package with unobfuscated bundles.
+- The private development repo is now guarded against reaching npm (`private`, a `prepublishOnly` refusal, and a `publishConfig` registry pointing nowhere). It shares a package name with the public repo, so a stray publish there would have succeeded and replaced the package.
 
 ## [2.2.0] — 2026-07-28
 
@@ -61,7 +117,7 @@ Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no sour
 - A **`Buffer` polyfill is still required** — `@solana/web3.js` and `@coral-xyz/anchor` read the global. Standard for any Solana dapp.
 
 ### Internal
-- `scripts/browser-e2e.mjs` (`pnpm test:browser`) bundles the real dist through the `browser` condition, loads it into headless Chromium and drives a full lifecycle against the browser's own IndexedDB, asserting the same published BIP-44 vectors the Node suite pins. Resolving is not the same as running — a bundle can resolve cleanly and still fail at runtime, as the 2.1.0 obfuscation incident showed. Wired into `prepublishOnly`.
+- `scripts/browser-e2e.mjs` (`pnpm test:browser`) bundles the real dist through the `browser` condition, loads it into headless Chromium and drives a full lifecycle against the browser's own IndexedDB, asserting the same published BIP-44 vectors the Node suite pins. Resolving is not the same as running — a build can resolve cleanly and still fail at runtime, as a 2.1.0 regression showed. Wired into `prepublishOnly`.
 - `tests/packaging/entry-resolution.test.ts` bundles the dist under each platform to prove the export map lands where intended; asserting its shape is not the same as asserting a resolver's behaviour.
 
 ## [2.1.0] — 2026-07-28
