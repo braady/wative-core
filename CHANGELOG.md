@@ -2,6 +2,17 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] — 2026-08-07
+
+A types-only fix. Six types that appear in the public API could not be imported,
+so TypeScript users could call a method but not write down what it took or
+returned. Nothing changed at runtime, and JavaScript users are unaffected.
+
+### Fixed
+- `OpenOptions` (the options bag for `Workspace.open()`), `PasswordCheckContext`,
+  `NetworkConfig`, `AbiItem`, `SplTokenArgs` and `SplTokenAccountSet` are now
+  exported and can be imported by name.
+
 ## [2.3.0] — 2026-08-06
 
 Unlocking is much faster. Drop-in from 2.2.x; wallets from 1.x need a manual step first.
