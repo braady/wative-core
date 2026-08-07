@@ -3,4 +3,15 @@ node_modules
 .DS_Store
 
 # Local publish tooling, delivered by the release sync. Not for publication.
+# `.githooks/` is ignored because nothing but a local clone ever needs it.
+#
+# `check-example-suite.mjs` is deliberately NOT ignored: CI invokes it, so a
+# fresh checkout must contain it or the example gate cannot run at all. Keeping
+# it out of the npm tarball is the `files` allowlist's job, not this file's —
+# and a root-level .mjs is already outside that allowlist.
 .githooks/
+
+# Captured test output. Node embeds ABSOLUTE paths in stack traces, so a failed
+# run here holds the maintainer's local filesystem layout — and this is a
+# publish-only repo where `git add -A` is the natural motion.
+.test-output
