@@ -2,6 +2,53 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.5] — 2026-08-07
+
+A security release. Upgrade if you send EVM transactions, or if you keep more
+than one account in a workspace.
+
+### Security
+- **A mistyped destination address was silently corrected.** An EVM address
+  carries a checksum whose whole purpose is to catch a mistyped character. When
+  a transaction destination arrived with a checksum that did not match, it was
+  quietly rewritten into a valid-looking address rather than refused — so a
+  single wrong character could send funds to an address you never typed, with no
+  warning. Such a destination is now rejected. Addresses given entirely in lower
+  or upper case carry no checksum to check and are unaffected, and address
+  lookup stays as forgiving as before.
+- **An account could overwrite another account's stored secrets.** On macOS and
+  Windows, where file names ignore case, creating an account could write over a
+  stored account whose name differed only in capitalisation — destroying the
+  sealed recovery phrase it held. Names are now checked the way the file system
+  actually compares them.
+- **Two addresses reached cloud metadata services.** The RPC URL check missed one
+  IPv6 spelling of the metadata address, and the well-known metadata host names
+  entirely.
+- **Sealed material no longer appears when an object is logged.** The stored
+  recovery phrase and stored keys were ordinary visible properties, so they
+  surfaced in `console.log` output and in anything that walks an object's
+  properties.
+- **A password policy option set to `undefined` no longer disables it.** Building
+  an options object from optional values — the ordinary way to forward
+  settings — removed the minimum-length rule entirely, so short passwords stopped
+  being reported.
+
+### Fixed
+- **`confirmed` no longer fires for a reverted transaction.** Subscribers were
+  told a transaction had confirmed, receiving a receipt whose own success flag
+  was false, and only afterwards told it failed.
+- **A stray file no longer blocks removing a network.** A single duplicate left
+  in the storage folder — the kind a file manager creates — made network removal
+  refuse permanently.
+- **A log file prefix can no longer choose the directory.** A prefix containing
+  path separators wrote the log outside the folder it was given. Sizes and file
+  counts are validated too.
+- **Aborting a transaction cannot leave a stale finish behind.** Internal
+  finishing can no longer be triggered while a transaction is still in flight.
+- **Key material is cleared in three more places** where an unusual failure —
+  one bad address, an interrupted derivation, a rolled-back add — previously left
+  it in memory.
+
 ## [2.3.4] — 2026-08-07
 
 A security release. Upgrade if you hold keys in a long-running process, or if
