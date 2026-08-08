@@ -2,6 +2,70 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.6] — 2026-08-08
+
+A correctness release for anyone who sends transactions. Several ways a
+transaction could do something other than what you asked, or be reported as
+something it was not, all of them silent.
+
+### Security
+- **A redirect could carry your RPC request to a host you never configured.**
+  The RPC address you set was checked, but a redirect from that address was
+  followed automatically — and the kinds that preserve the request body would
+  re-send the whole call somewhere else, including addresses the check exists to
+  block. Redirects are no longer followed, and one is now reported as a
+  redirect, naming where it was being sent, rather than as an unreachable node.
+- **The transaction being watched was chosen by the endpoint.** After a
+  broadcast, the identifier the endpoint replied with was taken at face value
+  and everything afterwards followed it — so an endpoint could hand back an
+  identifier of its own and report a result for a transaction you never sent,
+  while yours went unwatched. That reply is now checked against the transaction
+  that was actually signed. An endpoint that does not acknowledge a broadcast
+  still reports no identifier, exactly as before.
+- **A mistyped token contract address was silently corrected.** The same
+  checksum repair that was fixed for transaction destinations in 2.3.5 also
+  applied where you supply a token's contract address. It is now refused.
+  Addresses given entirely in lower or upper case are unaffected.
+
+### Fixed
+- **Call data with an odd number of digits changed the function being called.**
+  It was padded on the left, which shifts every byte — turning a token transfer
+  into a call to something else, with the arguments shifted too. The
+  transaction signed, sent and mined perfectly well; it simply did something
+  else. Such call data is now refused, because what was intended cannot be
+  known.
+- **An automatic nonce could be handed out more than once.** The nonce was
+  requested from the node every time and nothing recorded what had already been
+  used, so transactions prepared before the node caught up all received the same
+  one. Sending three transfers in a row let one arrive while the rest could
+  never be mined, and all three reported as sent. A nonce you supply yourself is
+  still honoured exactly as given, so replacing an in-flight transaction with a
+  higher fee works as before.
+- **A mined transaction could be reported as a failed send.** One unreadable
+  field in an otherwise successful receipt — the gas figures — was enough to
+  report the whole send as failed and to discard the receipt proving the funds
+  moved. Those figures are now read tolerantly and simply omitted when they
+  cannot be read.
+- **An address will not sign for one chain and send to another.** An address and
+  the network it is pointed at could disagree about which chain they belong to;
+  signing now refuses rather than producing a signature for one chain and
+  handing it to another.
+- **A signed transaction's fields can no longer be changed.** Editing a field
+  after signing was accepted and reported back, while the bytes that would be
+  sent still carried the original values. This covers both EVM and Solana
+  transactions. Build a new transaction to change something.
+- **A wallet list handed to you can no longer be modified in place.** Assigning
+  to it changed the account's own list, and the next save wrote that through.
+- **A dropped network no longer comes back.** Saving a network after removing it
+  added it again, in memory and on disk.
+- **A blank address filter no longer matches the first address**, and passing
+  something that is not an account now reports a parameter error rather than an
+  unrelated type error.
+- **Creating an account no longer overwrites one another handle just created.**
+  Two handles open on the same workspace could each create an account with the
+  same name, leaving one record holding the second recovery phrase and
+  destroying the first.
+
 ## [2.3.5] — 2026-08-07
 
 A security release. Upgrade if you send EVM transactions, or if you keep more
