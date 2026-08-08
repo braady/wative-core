@@ -2,6 +2,47 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.4] — 2026-08-07
+
+A security release. Upgrade if you hold keys in a long-running process, or if
+you log anything from a Solana wallet.
+
+### Security
+- **Key material could survive `lock()`.** Two separate cases. Records sealed by
+  the optional faster storage format left one readable copy of each record's key
+  in memory after the workspace was locked — and because that format seals each
+  secret the same way, such a copy is the secret itself. Separately, part of the
+  password-derivation scratch space was not being cleared, leaving
+  password-derived bytes resident. Both are now cleared, and both are covered by
+  checks that can actually observe the memory in question.
+- **`lock()` could return while an account stayed unlocked.** An `unlock` that
+  landed at the same moment as a `lock` could complete inside it: the workspace
+  reported locked while the account still held its mnemonic and could sign, and
+  no later `lock()` could reach it. Locking is now closed to that race.
+
+### Fixed
+- **Signing typed data with a `bytes` field.** A `Uint8Array` or `Buffer` was
+  hashed as text rather than as its bytes, so the signature did not match what
+  any other implementation computes — and two containers holding the same bytes
+  gave two different results. Passing a `0x` string was, and remains, correct.
+  Text that is not `0x`-hex is now rejected rather than silently hashed a
+  second, incompatible way.
+- **Malformed typed data now raises the library's own error.** Six shapes —
+  including a `primaryType` naming a built-in type, and a struct that contains
+  itself — escaped as a raw `TypeError` with no error code.
+- **Solana signatures and transaction ids are no longer removed from logs.** The
+  redactor treated any long base58 value as a secret, which is exactly the shape
+  of a signature, so the one value worth correlating on disappeared silently.
+  Redaction by field NAME was broadened at the same time, so tokens, passcodes
+  and recovery keys that previously slipped through are now covered.
+- **Logging a non-string no longer throws.** `logger.info(x)` where `x` was
+  undefined, a number or an object took down the caller.
+- **Adopting an account into another workspace** now refuses when that
+  workspace's password would not open it, instead of writing a record that can
+  never be opened again.
+- **Adding an account no longer loses concurrent work.** Wallets derived while
+  the account was being added were kept in memory but never written.
+
 ## [2.3.3] — 2026-08-07
 
 A security fix for typed-data signing. Upgrade if you use `signTypedData`.
