@@ -2,6 +2,63 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.7] — 2026-08-08
+
+A security and correctness release. Upgrade if you display names your users
+typed, import Solana keys, send Solana transactions, or rely on the password
+strength report.
+
+### Security
+- **A hidden character could smuggle a dangerous link into a display name.**
+  Names, tags and other free-form text are cleaned before storage, and that
+  cleaning removed dangerous prefixes like `javascript:` before it removed
+  zero-width and control characters. A single invisible character placed inside
+  such a prefix therefore survived the check and was then tidied away, handing
+  back exactly the thing that was supposed to have been removed. Anything
+  putting a stored name on a page received a working link. All affected
+  prefixes and every invisible-character class are covered.
+- **The password strength report described a different password than the one in
+  use.** Passwords are normalised before the key is derived, but the strength
+  check read the text exactly as typed. A password written in decomposed form —
+  ordinary for some keyboards and languages — was reported as longer and
+  stronger than the secret actually protecting the wallet, and could pass a
+  minimum-length rule the real one fails. The report now measures what is
+  actually used. Nothing about existing wallets or how keys are derived changes,
+  and the warning about passwords that shift form between machines is unchanged.
+
+### Fixed
+- **A malformed Solana private key is now refused in this library's terms.**
+  Such a key was always rejected, but by an underlying library, as a plain error
+  carrying no error code — so it could not be handled alongside every other
+  failure. It now reports `INVALID_PRIVATE_KEY`, matching what the EVM side
+  already did.
+- **A rejected logging change no longer takes effect anyway.** Changing sinks or
+  the log level while the workspace is locked correctly fails — but the new
+  settings were applied before that failure, leaving the previous sinks closed
+  and, for file logging, records being written under a configuration you were
+  told had been rejected. Nothing changes now unless the change succeeds.
+- **Closing RPC clients now closes all of them.** Solana connections were left
+  open, each holding a network connection and two timers, once per endpoint used
+  for the lifetime of the process.
+- **An expired Solana transaction now says so.** Previously it was polled for the
+  full two minutes and then reported as a timeout — the same answer given for a
+  slow node, though the two call for opposite responses. A timeout means the
+  outcome is unknown and sending another transaction risks paying twice; an
+  expired one can never be accepted, so replacing it is safe. It now ends as
+  dropped, saying the blockhash expired.
+- **Wallet lookup by tag is no longer case-sensitive**, matching how the same
+  method already looked up accounts and addresses. Tags keep the capitalisation
+  you gave them.
+
+### Added
+- **`workspace.damagedAccountSlugs`** lists account records that are present but
+  could not be opened. Such a record is deliberately kept rather than discarded,
+  and creating an account with the same name will not overwrite it — but until
+  now nothing reported that it existed, and the only visible sign was new
+  accounts receiving unexpected names. The list is read-only: removing such a
+  record is left to you, because it may still hold a recoverable recovery
+  phrase.
+
 ## [2.3.6] — 2026-08-08
 
 A correctness release for anyone who sends transactions. Several ways a
@@ -206,6 +263,18 @@ A security fix for typed-data signing. Upgrade if you use `signTypedData`.
   your own verifier would reject, with nothing to point at the cause. An empty or
   absent list still works, so the JSON-RPC shape is unaffected.
 
+- ⚠️ **Documented late — this shipped in 2.3.3 without a note.** `record.unlock(password)`
+  on a record that is already open now re-checks the password instead of returning
+  success. Records arrive already open in the common case, so a caller using
+  `record.unlock(pw)` as a password check was previously told yes for **every**
+  string, including a wrong one. It also refuses once the workspace has been locked
+  or the record dropped, where a retained handle used to keep answering password
+  guesses indefinitely.
+
+  **Migration.** If you relied on `unlock()` succeeding for an already-open record,
+  pass the real password. Reading `.value` is unaffected — that is a snapshot you
+  already hold, and it is deliberately not gated.
+
 ## [2.3.2]
 
 Not released.
@@ -256,7 +325,7 @@ Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no sour
 ### Added
 - **`IdbProvider` — IndexedDB storage backend.** Created via the async factory `IdbProvider.create(name, opts)`, which negotiates durable storage before returning. Exposes `durability` (`"persistent" | "best-effort"`) and a `quota` snapshot.
 - **`ContainerProvider`** — the storage-agnostic base extracted from `HybridProvider`. A custom backend now implements only six primitives (`_exist`, `_listItems`, `_read`, `_write`, `_remove`, `_ensureDir`) and inherits record framing, the encrypted envelope and its identity AAD, the key layout and the container session. Previously `Provider` declared the record API abstract, so a custom provider had to reimplement encryption — which is why the shipped custom-provider example carried a hand-rolled XOR cipher and a warning to use a real one.
-- **`exportContainer()` / `importContainer()`** on `ContainerProvider`. Sealed records move verbatim — never decrypted, so no key is materialized and nothing is re-keyed. Because every backend shares one framing, a container round-trips IndexedDB ⇄ filesystem and opens with the same password. Import refuses a non-empty target without `{ overwrite: true }` and rejects entries outside the container layout.
+- **`exportContainer()` / `importContainer()`** on `ContainerProvider`. Both require an unlocked workspace and throw `WORKSPACE_LOCKED` otherwise — a precondition that was not stated when they shipped. Sealed records move verbatim — never decrypted, so no key is materialized and nothing is re-keyed. Because every backend shares one framing, a container round-trips IndexedDB ⇄ filesystem and opens with the same password. Import refuses a non-empty target without `{ overwrite: true }` and rejects entries outside the container layout.
 - **`wative-core/node` subpath** — `HybridProvider`, `FileSink` and the default-workspace-path resolver.
 - **`STORAGE_NOT_DURABLE`** error code.
 
