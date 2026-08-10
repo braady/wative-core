@@ -27,7 +27,7 @@
 // Usage: node <path>/check-example-suite.mjs [dir] [--expect N] [--tests-in SUBDIR]
 
 import { readdirSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join, resolve, relative, basename } from "node:path";
 import { spawnSync } from "node:child_process";
 
 const EXPECTED_TESTS = 58;
@@ -55,6 +55,13 @@ for (let i = 0; i < args.length; i++) {
   else fail(`unexpected extra argument "${a}"`);
 }
 const dir = resolve(dirArg ?? ".");
+// `dir` is resolve()d, so it is always absolute. Everything this script prints —
+// its own failure messages and the runner's output verbatim — is read at publish
+// time and pasted into release logs and issues, so strip the root from all of it.
+// Measured: without this, a FAILING run leaks the layout through V8 stack frames
+// (`ERR_UNKNOWN_FILE_EXTENSION … for /abs/path`), because node resolves a test
+// file before loading it no matter how the path was passed on the command line.
+const redact = (s) => String(s).replaceAll(dir, ".");
 if (!Number.isInteger(expected) || expected < 1) fail(`--expect must be a positive integer, got "${expected}"`);
 if (!testsIn) fail("--tests-in requires a directory");
 
@@ -65,11 +72,18 @@ try {
     .filter((f) => f.endsWith(".test.cjs") || f.endsWith(".test.mjs"))
     .sort();
 } catch (e) {
-  fail(`cannot read ${testsDir}: ${e.message}`);
+  // redact(): readdirSync was handed the ABSOLUTE testsDir, so the path is inside
+  // e.message even though the prefix here is relative.
+  fail(`cannot read ${testsIn}: ${redact(e.message)}`);
 }
-if (files.length === 0) fail(`no test files in ${testsDir} — they did not ship, or the path is wrong`);
+if (files.length === 0) fail(`no test files in ${testsIn} — they did not ship, or the path is wrong`);
 
-const run = spawnSync(process.execPath, ["--test", ...files.map((f) => join(testsDir, f))], {
+// Paths RELATIVE to `cwd: dir`. What this buys, measured on Node 24 rather than
+// assumed: the reporter's own per-file label becomes `✖ examples/x.test.cjs`
+// instead of an absolute path. It buys nothing on a PASSING run — both the spec
+// and tap reporters label subtests by test NAME, never by path — so `redact()`
+// above, not this, is what makes a failing run safe to paste.
+const run = spawnSync(process.execPath, ["--test", ...files.map((f) => join(testsIn, f))], {
   encoding: "utf8",
   cwd: dir,
 });
@@ -77,7 +91,7 @@ const run = spawnSync(process.execPath, ["--test", ...files.map((f) => join(test
 // summary lookup returns empty. That fails closed (the missing-summary check
 // fires) but it is a false red, and a red gate nobody believes is a dead gate.
 const out = `${run.stdout ?? ""}${run.stderr ?? ""}`.replace(/\x1b\[[0-9;]*m/g, "");
-process.stdout.write(out);
+process.stdout.write(redact(out));
 
 // The summary prefix depends on the reporter — `spec` writes "ℹ", `tap` writes
 // "# " — and which is default varies by Node version. Accept either.
@@ -111,4 +125,13 @@ if (total !== expected) {
   fail(`expected exactly ${expected} tests in ${testsIn}, ran ${total}. Either they did not all ship, or a test was added and this number needs updating`);
 }
 
-console.log(`✓ ${testsIn} suite: ${total}/${total} passed in ${dir}`);
+// This line, not the spawn arguments, is the one place a PASSING run leaked the
+// absolute root — measured at exactly 1 line per run before the change.
+//
+// `relative()` only shortens when cwd and dir share a prefix; run from an
+// unrelated cwd it yields `../../Users/<user>/...`, which still carries the
+// layout and which redact() cannot catch (the string holds no absolute `dir` to
+// match). So escape upward => print the basename instead, which names the build
+// without locating it.
+const rel = relative(process.cwd(), dir) || ".";
+console.log(`✓ ${testsIn} suite: ${total}/${total} passed in ${rel.startsWith("..") ? basename(dir) : rel}`);
