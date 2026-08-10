@@ -6,7 +6,7 @@ All notable changes to `wative-core` are documented here. The format follows [Ke
 
 Typed-data signing (`signTypedData`) is stricter about payloads that were
 producing signatures no counterparty can verify. If you sign typed data, read
-the three breaking items below.
+the three breaking items below. Nothing else here changes what is accepted.
 
 ### Security
 - **BREAKING. A domain carrying an unrecognised field is now refused.** Only
@@ -33,6 +33,13 @@ the three breaking items below.
   `PARAMETER_ERROR` naming the field, instead of escaping as a plain error with
   no code. Payloads that signed before still sign, and produce the same
   signature; only the error changed.
+- **A malformed recipient on a native SOL transfer reports this library's
+  error.** Such an address was always rejected, but by an underlying library, as
+  a plain error carrying no code — so it could not be handled alongside every
+  other failure. It now reports `PARAMETER_ERROR` naming the field, and says
+  whether the address is not valid base58 or is the wrong length. This message
+  does not repeat the rejected value back. Every address that built before still
+  builds; only the error changed.
 
 ## [2.3.7] — 2026-08-08
 
