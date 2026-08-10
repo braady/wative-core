@@ -2,6 +2,37 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Typed-data signing (`signTypedData`) is stricter about payloads that were
+producing signatures no counterparty can verify. If you sign typed data, read
+the three breaking items below.
+
+### Security
+- **BREAKING. A domain carrying an unrecognised field is now refused.** Only
+  `name`, `version`, `chainId`, `verifyingContract` and `salt` are part of an
+  EIP-712 domain. A misspelled or mis-cased field — `chainID` with a capital D,
+  or keys lower-cased by a JSON round-trip — was previously dropped in silence,
+  and the signature was then bound to no chain and no contract at all. Such a
+  payload is refused rather than signed. A domain with no fields still signs,
+  unchanged.
+
+### Fixed
+- **BREAKING. A field typed `uint` or `int` now signs as `uint256`/`int256`.**
+  These are the same types under a shorter name and every other implementation
+  treats them that way; this one did not, so the signature verified as a
+  different address than the actual signer, with no error anywhere. Any
+  signature previously produced for such a field changes — the new one is the
+  one a counterparty accepts. Fields with an explicit width are unaffected.
+- **BREAKING. A fixed-size array field must hold exactly its declared number of
+  values.** `uint256[2]` given three values used to sign something no verifier
+  would evaluate; it is now refused.
+- **Malformed typed data reports this library's error.** Bad values in `message`
+  — a missing or `null` nested struct, a number out of range for its declared
+  width, a malformed address or byte length, an unreadable field — now report
+  `PARAMETER_ERROR` naming the field, instead of escaping as a plain error with
+  no code. What is accepted and what is refused is unchanged; only the error is.
+
 ## [2.3.7] — 2026-08-08
 
 A security and correctness release. Upgrade if you display names your users
