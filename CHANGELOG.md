@@ -9,6 +9,17 @@ producing signatures no counterparty can verify. If you sign typed data, read
 the three breaking items below. Nothing else here changes what is accepted.
 
 ### Security
+- **Four address errors no longer repeat the value they rejected.** A
+  destination that is not a valid address, a malformed Solana recipient, a
+  Solana fee payer that differs from the sender, and a transaction whose sender
+  does not match the address signing it: each used to include the value it had
+  just refused. Pasting a private key into a destination field is an easy slip,
+  and the message could then reach anything that records errors — a log file, a
+  crash reporter, a support ticket. Each now names the field that was wrong
+  instead of showing its contents. An address that IS valid is still shown, so
+  a checksum typo remains easy to spot. Note this covers address fields: a
+  value rejected as a malformed *number* — an amount, a gas price — is still
+  shown in full.
 - **BREAKING. A domain carrying an unrecognised field is now refused.** Only
   `name`, `version`, `chainId`, `verifyingContract` and `salt` are part of an
   EIP-712 domain. A misspelled or mis-cased field — `chainID` with a capital D,
@@ -37,9 +48,8 @@ the three breaking items below. Nothing else here changes what is accepted.
   error.** Such an address was always rejected, but by an underlying library, as
   a plain error carrying no code — so it could not be handled alongside every
   other failure. It now reports `PARAMETER_ERROR` naming the field, and says
-  whether the address is not valid base58 or is the wrong length. This message
-  does not repeat the rejected value back. Every address that built before still
-  builds; only the error changed.
+  whether the address is not valid base58 or is the wrong length. Every address
+  that built before still builds; only the error changed.
 
 ## [2.3.7] — 2026-08-08
 
