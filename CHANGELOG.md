@@ -2,6 +2,67 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Two breaking items, both on paths that were producing results no counterparty
+could act on. Everything else here narrows what error messages reveal, or
+accepts input that was being refused for no reason.
+
+### Security
+- **BREAKING. The endpoint-reply check now covers Solana.** 2.3.6 stopped an
+  endpoint choosing which transaction was watched after a broadcast, but that
+  check only ever applied to EVM sends — the Solana lane still took the reply at
+  face value, so an endpoint could hand back an identifier of its own and report
+  results for a transaction you never sent. On Solana the transaction id is the
+  signature itself, so it is known before the endpoint answers; that reply is now
+  checked against the transaction that was actually signed, and the tracker, the
+  recorded id and the status polling all follow the signed value. A send refused
+  for this reason reports `timeout`, not `failed`, because the endpoint did
+  acknowledge it and the transaction may well have been relayed — look it up by
+  its signed signature before sending anything else, and do not rebuild it with a
+  fresh blockhash. The signed identifier is still reported, so it can be looked
+  up. Endpoints that answer correctly are unaffected.
+- **An RPC URL missing its scheme was handed back with one attached.** Provider
+  dashboards present an endpoint host-first with the key in the path and no
+  scheme. Pasting that produced an error that repeated the whole value with
+  `https://` prefixed — a ready-to-use secret URL, in a message that can reach a
+  log file or a crash reporter. Both refusals for an unparseable RPC URL now say
+  what is wrong without repeating any of it. A rejected scheme and a blocked
+  host are still named, since those are not the caller's secret.
+- **A value rejected as a malformed number is no longer shown in full.** This
+  completes the sweep 2.3.8 began, which was scoped to address fields and noted
+  that amounts and gas prices were still shown whole — that note no longer
+  applies. A private key or recovery phrase pasted into an amount, a gas price or
+  a gas limit used to appear in the error in its entirety. Such a value is now
+  shortened. It is shortened rather than removed because for a number the
+  rejected text is the diagnosis: a thousands separator, a stray decimal point or
+  an exponent is still perfectly legible.
+- **The last two address errors stopped repeating their value.** A token
+  contract address that is not a valid address, and a network's multicall
+  address, were the two sites the 2.3.8 sweep left. Adding a custom token by
+  contract address is something an end user does by pasting, and the same slip
+  applies. Both now name the field instead of showing its contents.
+
+### Fixed
+- **BREAKING. A field whose declared type is not a type at all is now refused.**
+  A type is a name followed by zero or more array suffixes and nothing else.
+  Anything trailing the suffix — `uint256[]extra`, `uint256[2]junk` — or an
+  unclosed bracket such as `uint256[` was accepted: the trailing part was
+  discarded unread, the field was then not treated as an array at all, and the
+  encoding it produced was not even the right size for a typed-data field. The
+  result was a signature no counterparty could check. Such a payload now reports
+  `PARAMETER_ERROR` naming the type, which is what other implementations already
+  do. Every valid type signs exactly as before, including nested and fixed-size
+  arrays such as `uint256[2][3]`, a zero-padded length such as `uint256[01]`, and
+  the shorthands `uint` and `int`.
+- **A Solana fee payer naming the sending account is no longer refused.**
+  Signing rejected any fee payer that was not the exact same string as the
+  sender, so supplying the sender's own key as a public-key object or as raw key
+  bytes — both of which build correctly for external signing — was turned away,
+  as was `null`. All three now sign, and describe a transaction identical to
+  leaving the field out. A fee payer naming a genuinely different account is
+  still refused, and is still available for external signing.
+
 ## [2.3.8] — 2026-08-09
 
 Typed-data signing (`signTypedData`) is stricter about payloads that were
