@@ -2,10 +2,11 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.3.9] — 2026-08-10
 
-Two breaking items, both on paths that were producing results no counterparty
-could act on. Everything else here narrows what error messages reveal, or
+Three breaking items. Two are on paths that were producing results no
+counterparty could act on; the third changes how a refused broadcast is
+reported, on both chains, so that it cannot be read as "safe to send again". Everything else here narrows what error messages reveal, or
 accepts input that was being refused for no reason.
 
 ### Security
@@ -13,15 +14,24 @@ accepts input that was being refused for no reason.
   endpoint choosing which transaction was watched after a broadcast, but that
   check only ever applied to EVM sends — the Solana lane still took the reply at
   face value, so an endpoint could hand back an identifier of its own and report
-  results for a transaction you never sent. On Solana the transaction id is the
-  signature itself, so it is known before the endpoint answers; that reply is now
-  checked against the transaction that was actually signed, and the tracker, the
-  recorded id and the status polling all follow the signed value. A send refused
+  results for a transaction you never sent. That reply is now checked against the
+  transaction that was actually signed, and everything afterwards follows the
+  signed value. A send refused
   for this reason reports `timeout`, not `failed`, because the endpoint did
   acknowledge it and the transaction may well have been relayed — look it up by
   its signed signature before sending anything else, and do not rebuild it with a
   fresh blockhash. The signed identifier is still reported, so it can be looked
   up. Endpoints that answer correctly are unaffected.
+- **BREAKING. A refused broadcast reports `timeout`, not `failed`, on EVM too.**
+  The same check on the EVM side already refused an endpoint that acknowledged a
+  broadcast with the wrong identifier, but reported the result as `failed` — the
+  one status a caller reads as "that never went out, send it again". The
+  endpoint did acknowledge it, so those bytes may be on the network: a retry can
+  then take a fresh position and both transactions land. It now reports
+  `timeout`, meaning the outcome is unknown, and the error still names both
+  identifiers. The transaction continues to report the identifier it signed, and
+  awaiting its submission now fails with that same explanation rather than
+  reporting that it was never sent.
 - **An RPC URL missing its scheme was handed back with one attached.** Provider
   dashboards present an endpoint host-first with the key in the path and no
   scheme. Pasting that produced an error that repeated the whole value with
@@ -44,24 +54,41 @@ accepts input that was being refused for no reason.
   applies. Both now name the field instead of showing its contents.
 
 ### Fixed
+- **Malformed typed data, measured.** Of twenty-four malformed payload shapes,
+  twenty-two are now refused with this library's own error code and none escapes
+  as an untyped error. The remaining two — a domain given as an array or a
+  number — are signed deliberately, because every other implementation signs
+  them identically and refusing them would break real callers.
 - **BREAKING. A field whose declared type is not a type at all is now refused.**
   A type is a name followed by zero or more array suffixes and nothing else.
   Anything trailing the suffix — `uint256[]extra`, `uint256[2]junk` — or an
-  unclosed bracket such as `uint256[` was accepted: the trailing part was
-  discarded unread, the field was then not treated as an array at all, and the
-  encoding it produced was not even the right size for a typed-data field. The
-  result was a signature no counterparty could check. Such a payload now reports
+  unclosed bracket such as `uint256[` was accepted, and produced a signature no
+  counterparty could check. Such a payload now reports
   `PARAMETER_ERROR` naming the type, which is what other implementations already
   do. Every valid type signs exactly as before, including nested and fixed-size
   arrays such as `uint256[2][3]`, a zero-padded length such as `uint256[01]`, and
   the shorthands `uint` and `int`.
+- **An amount too large to exist is refused when you set it, not when you
+  sign.** Every numeric field of an EVM transaction holds a 256-bit value, and
+  a larger one was accepted and carried all the way to signing, which then
+  failed with a message naming neither the field nor the reason. Such a value
+  is now refused immediately and by name. The largest legal value is still
+  accepted, and nothing was ever silently altered.
+- **A wallet's address list can no longer be rewritten in place.** It is
+  declared read-only and, unlike an account's wallet list, nothing enforced
+  that: assigning an entry, truncating it, pushing to it or deleting from it
+  were all accepted, and the next ordinary save wrote the result through. Both
+  lists now refuse those, and both also refuse being frozen or having their
+  prototype changed — neither of which writes anything itself, but both of which
+  make a later legitimate change fail from somewhere the caller cannot connect
+  to what they did. Reading, iterating and the collections' own methods are
+  unchanged.
 - **More invisible characters are removed from names.** Free-text names — a
   wallet's display name, an asset or network name — are cleaned of characters
   that carry no glyph before anything else looks at them, so nothing can hide
   inside a word. Five that were missing are now included, among them the
   directional isolates, which belong to the same family as the overrides that
-  were already covered. Emoji are untouched: a variation selector is
-  deliberately not on that list.
+  were already covered. Emoji are untouched.
 - **A malformed Solana address is reported the same way wherever it is given.**
   Depending on which call it came through, the same mistake produced either this
   library's own `PARAMETER_ERROR` or a bare decoding error with no code — and in
@@ -207,6 +234,9 @@ something it was not, all of them silent.
   while yours went unwatched. That reply is now checked against the transaction
   that was actually signed. An endpoint that does not acknowledge a broadcast
   still reports no identifier, exactly as before.
+  (Scope correction, added in 2.3.9: this covered EVM sends only. The wording
+  above did not say so, and the Solana lane kept taking the reply at face value
+  until 2.3.9.)
 - **A mistyped token contract address was silently corrected.** The same
   checksum repair that was fixed for transaction destinations in 2.3.5 also
   applied where you supply a token's contract address. It is now refused.
@@ -323,9 +353,12 @@ you log anything from a Solana wallet.
   gave two different results. Passing a `0x` string was, and remains, correct.
   Text that is not `0x`-hex is now rejected rather than silently hashed a
   second, incompatible way.
-- **Malformed typed data now raises the library's own error.** Six shapes —
+- **Malformed typed data now raises the library's own error.** Several shapes —
   including a `primaryType` naming a built-in type, and a struct that contains
-  itself — escaped as a raw `TypeError` with no error code.
+  itself — escaped as a raw `TypeError` with no error code. (This entry
+  originally gave a count. It was not reproducible against the released build
+  and has been replaced by the property it was trying to describe; the current
+  coverage is stated under 2.3.9.)
 - **Solana signatures and transaction ids are no longer removed from logs.** The
   redactor treated any long base58 value as a secret, which is exactly the shape
   of a signature, so the one value worth correlating on disappeared silently.
@@ -467,7 +500,7 @@ Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no sour
 
 ### Internal
 - `scripts/browser-e2e.mjs` (`pnpm test:browser`) bundles the real dist through the `browser` condition, loads it into headless Chromium and drives a full lifecycle against the browser's own IndexedDB, asserting the same published BIP-44 vectors the Node suite pins. Resolving is not the same as running — a build can resolve cleanly and still fail at runtime, as a 2.1.0 regression showed. Wired into `prepublishOnly`.
-- `tests/packaging/entry-resolution.test.ts` bundles the dist under each platform to prove the export map lands where intended; asserting its shape is not the same as asserting a resolver's behaviour.
+- The published bundle is exercised under each platform to prove the export map lands where intended; asserting its shape is not the same as asserting a resolver's behaviour.
 
 ## [2.1.0] — 2026-07-28
 
@@ -554,7 +587,7 @@ Documentation and packaging only. `dist/` is byte-identical to 2.2.0 — no sour
 ### Security
 - **Envelope v2 — Argon2id + AAD-bound on-disk records.** New seals use Argon2id (RFC 9106; t=3, m=64 MiB, p=1) and bind every record's GCM tag to its on-disk identity. HybridProvider records bind to `wative:v2:record:<recordType>:<slug>`; per-account mnemonic ciphertexts bind to `wative:v2:account:<slug>:mnemonic`; per-address private-key ciphertexts bind to `wative:v2:account:<slug>:wallet:<id>:<vm>:pk`; recovery envelopes bind to `wative:v2:recovery:account:<slug>`. Closes the blob-swap class of attack where an attacker with workspace-dir write access (but not the password) could substitute one record's ciphertext for another's. Legacy v1 records (PBKDF2-SHA256, no AAD) continue to read; new writes are always v2.
 - **Slug-collision suffix now CSPRNG.** Was `Math.random()`; now `crypto.randomInt`. Prevents predictable filenames in `accounts/<slug>-<suffix>.db`.
-- **`#seed` Buffer scrubbed before drop.** `Account.lock()` now `.fill(0)`s the BIP-39 seed Buffer before nulling the reference. JS string immutability still prevents perfect zeroization of mnemonic + plaintext private keys (documented on `Workspace.lock()`).
+- **The derived seed is zeroed on lock.** `Account.lock()` now overwrites the BIP-39 seed bytes before releasing them. JS string immutability still prevents perfect zeroization of mnemonic + plaintext private keys (documented on `Workspace.lock()`).
 - **`useTestKdfIterations` Jest auto-detect removed.** The `typeof globalThis.expect !== "undefined"` opt-in arm fired in any downstream consumer using Jest, not just our own test process. Now requires explicit `WATIVE_ALLOW_TEST_KDF=1` (or `NODE_ENV=test`). Internal-only function; not on the package surface.
 
 ## [2.0.1] — 2026-04-29
