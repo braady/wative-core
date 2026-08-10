@@ -55,6 +55,24 @@ accepts input that was being refused for no reason.
   do. Every valid type signs exactly as before, including nested and fixed-size
   arrays such as `uint256[2][3]`, a zero-padded length such as `uint256[01]`, and
   the shorthands `uint` and `int`.
+- **More invisible characters are removed from names.** Free-text names — a
+  wallet's display name, an asset or network name — are cleaned of characters
+  that carry no glyph before anything else looks at them, so nothing can hide
+  inside a word. Five that were missing are now included, among them the
+  directional isolates, which belong to the same family as the overrides that
+  were already covered. Emoji are untouched: a variation selector is
+  deliberately not on that list.
+- **A malformed Solana address is reported the same way wherever it is given.**
+  Depending on which call it came through, the same mistake produced either this
+  library's own `PARAMETER_ERROR` or a bare decoding error with no code — and in
+  one case nothing at all until much later, from a place that could no longer
+  say which address was at fault. Every one of them now reports
+  `PARAMETER_ERROR` and names the field. Nothing that built before is refused.
+- **A typed-data payload that declares `EIP712Domain` as null no longer throws a
+  raw error.** Naming that key as a field's type, with the key itself set to
+  `null` or `undefined`, produced a `TypeError` from inside the encoder instead
+  of a `PARAMETER_ERROR`. Leaving the key present but empty while nothing
+  references it is a normal payload and still signs, byte for byte as before.
 - **A Solana fee payer naming the sending account is no longer refused.**
   Signing rejected any fee payer that was not the exact same string as the
   sender, so supplying the sender's own key as a public-key object or as raw key
