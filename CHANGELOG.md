@@ -2,7 +2,7 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [2.3.8] — 2026-08-09
 
 Typed-data signing (`signTypedData`) is stricter about payloads that were
 producing signatures no counterparty can verify. If you sign typed data, read
