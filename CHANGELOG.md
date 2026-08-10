@@ -31,7 +31,8 @@ the three breaking items below.
   — a missing or `null` nested struct, a number out of range for its declared
   width, a malformed address or byte length, an unreadable field — now report
   `PARAMETER_ERROR` naming the field, instead of escaping as a plain error with
-  no code. What is accepted and what is refused is unchanged; only the error is.
+  no code. Payloads that signed before still sign, and produce the same
+  signature; only the error changed.
 
 ## [2.3.7] — 2026-08-08
 
