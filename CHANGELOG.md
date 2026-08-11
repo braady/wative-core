@@ -2,6 +2,154 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] — 2026-08-11
+
+Six breaking items, each one an operation that reported success without having
+done what it said. A broadcast whose reply never arrived was reported as one
+that never went out — on both chains. Moving an account between workspaces saved
+its later changes to the wrong place; changing a password could leave the old one
+working; erasing a browser workspace could leave everything in it; and restoring
+a backup over an existing workspace kept records the backup did not contain. The
+rest either clears secrets from memory sooner, or accepts input that was being
+refused for no reason.
+
+### Security
+- **BREAKING. A broadcast whose outcome is unknown no longer reports as one that
+  was refused — on both chains.** When the connection to an endpoint died during
+  a broadcast, or the endpoint answered with an error status or something that
+  was not a reply, the send reported `failed`: the one status meaning "that never
+  went out, send it again". Those bytes may well have reached the network. On
+  EVM a rebuilt transaction takes a fresh position from a node whose count the
+  relayed one already advanced; on Solana there is no position to collide at all,
+  so a rebuild takes a fresh blockhash, becomes a different transaction, and
+  nothing dedupes the two. Either way both can land.
+
+  Such a send now reports `timeout`, meaning the outcome is unknown, and the
+  identifier of the transaction that was signed is reported so it can be looked
+  up before anything else is sent.
+
+  An endpoint that answers with a reason it refused still reports `failed`,
+  because nothing was sent and sending again is safe. That is the ordinary way a
+  send fails — an underpriced or badly-positioned transaction on EVM, an expired
+  blockhash or a failed simulation on Solana — and for an expired blockhash
+  rebuilding is exactly the right response.
+- **BREAKING. An endpoint that refuses is reported differently from one that
+  never answered.** Every way a request could go wrong reported the same thing,
+  including the one case where the endpoint read the request and declined it.
+  Those are opposite facts for a broadcast, and a caller needs to tell them
+  apart to know whether sending again is safe. A refusal now carries its own
+  error code and the reason the endpoint gave; a lost connection, an error
+  status, or an unreadable reply still report the endpoint as unreachable. The
+  two chains previously disagreed about which code a refusal carried; they now
+  agree.
+- **A value an endpoint sent is cleaned before it appears in an error.** Two
+  errors raised while reading a reply placed that reply into the message exactly
+  as received, so control characters chosen by the endpoint were reproduced into
+  whatever log the caller writes, and an overlong value was repeated in full.
+  The value is still shown, since for a number the rejected text is the
+  diagnosis, but it is cleaned and shortened.
+
+### Security
+- **BREAKING. Changing an account's password now reports failure rather than a
+  success that did not happen.** If the account was locked between the moment
+  the change was requested and the moment it was carried out, the recovery
+  phrase was quietly left under the old password while everything else about the
+  change was saved. The account then reported that its password had been
+  changed, after which the new password failed and the old one still worked —
+  the exact reverse of the promise, in the situation you change a password for.
+  An account managed by its workspace was additionally recorded as having a
+  password of its own, which made it unopenable the next time it was loaded.
+  Two changes started at the same time could also both report success, with the
+  second overwriting the first using a password the first had already retired.
+  Both cases now report failure and leave the account exactly as it was.
+- **BREAKING. Erasing a browser workspace now reports whether it happened.**
+  Erasing one while the same application still had it open reported success and
+  left every stored record in the browser. Because nothing released the
+  workspace, that was the ordinary outcome rather than a rare one. The workspace
+  is now closed first so the erase can finish. An erase that cannot be confirmed
+  is reported as unconfirmed rather than as failed — it may still complete on its
+  own, and erasing again is always safe. Erasing where the browser offers no
+  storage at all now reports that, instead of returning quietly.
+- **Secrets are cleared from memory once they are no longer needed.** Several
+  intermediate values produced while deriving a key were left behind after use,
+  and a derived key dropped from the internal cache was discarded without being
+  cleared, putting it beyond the reach of the cleanup that runs when a workspace
+  locks. Unlocking an account whose recovery phrase could not be read also left
+  that phrase in memory although the account reported itself locked. Keys and
+  addresses are unchanged: derivation was checked byte for byte against the
+  previous release and against the published Argon2 test vectors.
+- **An endpoint that is not text is refused rather than saved unchecked.**
+  `rpcUrl` was the only network field with no type check, so a value that was not
+  text skipped every endpoint check — including the one that refuses addresses on
+  your local network — and was stored anyway. Leaving the field out reported an
+  error from outside this library rather than its own, including while loading a
+  stored network. An empty endpoint still means no endpoint configured.
+- **A rejected name or colour is quoted before it is reported.** Both were placed
+  into the error message exactly as supplied, so control characters in them were
+  reproduced into whatever log you write. A name is not always your own — it can
+  come from a filename on disk, or from a backup being restored.
+
+### Fixed
+- **BREAKING. An account moved to another workspace now belongs to the workspace
+  holding it.** Moving one wrote a single record into the receiving workspace and
+  then kept sending every later change back to the workspace it came from.
+  Reopening the receiving workspace showed the account without those changes, and
+  closing the original one made the account unusable even though the receiving
+  workspace was open and still listed it. For an imported private key, discarding
+  the original workspace lost the key. The account now saves to the workspace
+  holding it, unlocks with that workspace's password, and is closed by it.
+  Locking the receiving workspace while the move is still going on now closes the
+  account rather than leaving it open and unreachable. Re-deleting an account
+  that was moved in reports that it is already gone, rather than reporting it as
+  belonging elsewhere.
+- **BREAKING. Restoring a backup over an existing workspace now replaces it.**
+  Records the backup did not contain were left in place beside the restored ones,
+  still under the previous password. They could not be opened, could not be seen,
+  kept their names reserved, and made removing a network fail from then on. Only
+  what the backup carries is kept now, and anything it omits is removed. A backup
+  that cannot be restored in full is refused before anything changes, and a
+  backup carrying no configuration is refused outright rather than leaving a
+  workspace no password can open. The workspace is closed at the end, since the
+  password that opened it belonged to the workspace that was just replaced.
+- **A wallet can be labelled in your own script.** Tags and token symbols
+  accepted the letters of every script but refused the marks that most of them
+  require, so Devanagari, Bengali, Tamil, Thai, Arabic and Hebrew could not be
+  used at all. They now are. A label that would display as blank, or as nothing
+  at all, is still refused. Token symbols containing `+` are also accepted, which
+  several real tokens need.
+- **The two spellings of one password are one password.** The same password can
+  arrive in two forms depending on the keyboard, clipboard or operating system it
+  came from, and both have always unlocked a wallet. Several places compared the
+  forms directly instead, so a correct password could be reported as wrong when
+  re-entered on an already-open workspace or account, when confirming a record's
+  password, and when creating an account that shares the workspace password.
+  Checking a new password against previous ones now recognises the same password
+  in a different form as a reuse.
+- **A deleted account's name can be used again.** Every account name seen when a
+  workspace opened was reserved for as long as it stayed open, and deleting the
+  account did not release it. Creating an account under that name again quietly
+  produced a numbered variant, and adding one back was refused with a message
+  asking you to restore a file that had just been deleted.
+- **A token address pasted with a leading space is accepted.** It was refused
+  here while the same address was accepted everywhere else in the library.
+- **A hex value carrying two prefixes is refused rather than decoded.**
+  `0x0x41` produced two bytes with a zero in front instead of an error.
+- **Moving an account needs the networks it uses to exist in the receiving
+  workspace.** An account refers to its networks by name, so moving one into a
+  workspace that does not have a network it uses wrote a record that could not
+  be read back. The move reported success, and after reopening the account was
+  simply absent — not listed, not reported as held back, and not even holding
+  its name, while a record containing its recovery phrase and every key stayed
+  in the workspace, unreachable and impossible to remove. The move is now
+  refused before anything is written, naming the missing network.
+- **An account cannot be left holding no keys.** Both ways of removing wallets
+  checked that at least one wallet remained, which does not mean at least one
+  key remains: a wallet can legitimately be added without addresses, so removing
+  the wallet carrying an account's only keys left an account with none. It still
+  reported itself as an account, and reopening it produced a shell with nothing
+  in it. Removing wallets that hold no keys is unaffected, as is removing an
+  account outright.
+
 ## [2.3.9] — 2026-08-10
 
 Three breaking items. Two are on paths that were producing results no
