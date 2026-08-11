@@ -1,5 +1,4 @@
-// 08 — Persistence. Verify that accounts, networks, custom assets, and the
-// logger configuration all round-trip correctly across `lock()` + reopen.
+// 08 — Persistence: accounts, networks, assets and logger config across lock/reopen.
 
 const test = require("node:test");
 const assert = require("node:assert");

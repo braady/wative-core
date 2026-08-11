@@ -33,7 +33,7 @@ All tests work fully offline — no RPC calls, no real networks. Each test creat
 |---|---|
 | [01-quick-start.test.cjs](01-quick-start.test.cjs) | Open a workspace, create an HD account, derive 5 wallets, inspect EVM + Solana addresses, lock. |
 | [02-hd-account.test.cjs](02-hd-account.test.cjs) | HD-specific flows — deriving / slicing wallets, dumping the mnemonic, account-level passwords with `resetPassword`, round-trip across lock + reopen. |
-| [03-pk-account.test.cjs](03-pk-account.test.cjs) | PK accounts — creating from a private key, importing more keys (mix EVM + Solana under one account), duplicate-import rejection, dropping wallets. |
+| [03-pk-account.test.cjs](03-pk-account.test.cjs) | PK accounts — creating from a private key, importing more keys, and the three key formats accepted (EVM hex, Solana base58, `solana-keygen` JSON) with the chain inferred from the key. Also shows each import producing an address on both chains, duplicate-import rejection, and dropping wallets. |
 | [04-network-management.test.cjs](04-network-management.test.cjs) | The 10 pre-loaded networks, adding a brand-new network, overriding a pre-loaded RPC URL via `update()`, dropping user networks, the built-in protection guard. |
 | [05-asset-management.test.cjs](05-asset-management.test.cjs) | The 25 pre-loaded tokens, adding a custom user token, id collision rejection, contract-address collision rejection, dropping user tokens, `workspace.filter(q, "Asset")` search. |
 | [06-address-signing.test.cjs](06-address-signing.test.cjs) | Personal-message signing on EVM and Solana, building a transaction fully offline (no RPC). |

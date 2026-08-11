@@ -1,17 +1,11 @@
-// 07 — Custom storage backend. Extend the abstract `Provider` class to plug
-// `Workspace.open()` into any storage system. This example uses an in-memory
-// key-value store with a trivial XOR cipher; real custom Providers should use
-// an authenticated cipher (AES-GCM, ChaCha20-Poly1305).
+// 07 — Custom backend: extend Provider itself; the XOR cipher here is illustrative only.
 
 const test = require("node:test");
 const assert = require("node:assert");
 
 const { Workspace, Provider, Record, WativeError } = require("wative-core");
 
-/**
- * In-memory `Provider` implementation. Stores records in a Map under
- * filesystem-style paths, encrypted with a single-byte-header XOR scheme.
- */
+/** In-memory Provider: records in a Map under path-like keys, XOR-"encrypted". */
 class InMemoryProvider extends Provider {
   #store = new Map();
   #dirs = new Set();

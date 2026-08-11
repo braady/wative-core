@@ -1,5 +1,4 @@
-// 04 — Network management. Pre-loaded networks, add custom networks,
-// override an existing network's RPC URL, drop user networks.
+// 04 — Networks: the pre-loaded set, adding, overriding an RPC URL, dropping.
 
 const test = require("node:test");
 const assert = require("node:assert");

@@ -8,12 +8,6 @@ import { fileURLToPath } from "node:url";
 const here = path.dirname(fileURLToPath(import.meta.url));
 
 async function importDist() {
-  // Import by PACKAGE SPECIFIER, not by file path. The root entry is
-  // condition-split: a raw path to dist/index.js bypasses the exports map and
-  // lands on the browser build, which deliberately has no filesystem backend.
-  // "wative-core" resolves through the node condition, which is what an ESM
-  // consumer actually gets — and still loads real ESM, so this keeps testing
-  // that the dist needs no CJS require shims.
   return import("wative-core");
 }
 
@@ -58,9 +52,6 @@ test("ESM dist consumer signs EVM transactions without global require shims", as
 });
 
 test("ESM dist consumer signs SVM transactions without global require shims", async () => {
-  // Regression: the SVM signing path used require() for @solana/web3.js, bs58
-  // and tweetnacl, which throws "Dynamic require ... is not supported" under
-  // native ESM. These are now static imports like web3 on the EVM side.
   const { Workspace } = await importDist();
   assert.equal(globalThis.require, undefined);
   const root = await mkdtemp(path.join(tmpdir(), "wative-core-esm-svm-sign-"));

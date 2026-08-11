@@ -1,5 +1,4 @@
-// 06 — Address signing. Sign personal messages and build transactions
-// fully offline.
+// 06 — Address signing: personal messages and transaction building, fully offline.
 
 const test = require("node:test");
 const assert = require("node:assert");

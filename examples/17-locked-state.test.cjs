@@ -1,12 +1,4 @@
-// 17 — Locked-state contract. Locking is the library's core safety promise:
-// once locked, nothing that touches key material may succeed. The other
-// examples lock at the end of a test but never assert what locking actually
-// enforces, so a regression that left a decrypted key in memory would not fail
-// any of them.
-//
-// This file pins the contract from the outside: which operations refuse, which
-// error code they refuse with, that they hand back no secret material while
-// refusing, and that unlocking restores exactly the previous behaviour.
+// 17 — What locking enforces: which operations refuse, with which code, and unlock parity.
 
 const test = require("node:test");
 const assert = require("node:assert");
@@ -42,15 +34,7 @@ async function freshAccount(tag) {
   return { ws, account, wallet, address };
 }
 
-/**
- * Assert an operation refuses with the given code.
- *
- * The API deliberately mixes shapes: signing and key export are synchronous
- * (they only touch already-decrypted material), while anything that persists or
- * decrypts is async. Wrapping the call in an async function normalises a
- * synchronous throw and a rejected promise into one thing, so these assertions
- * describe the security contract rather than the call shape.
- */
+/** Assert an operation refuses with the given code, sync throw or rejection alike. */
 async function refuses(code, label, operation) {
   await assert.rejects(
     async () => operation(),
@@ -74,8 +58,6 @@ test("a locked account refuses every operation that needs key material", async (
   await refuses("ACCOUNT_LOCKED", "signTypedData", () => address.signTypedData(TYPED_DATA));
   await refuses("ACCOUNT_LOCKED", "deriveWallets", () => account.deriveWallets(1));
 
-  // Refusing with the correct password supplied is the point: possession of the
-  // password must not be enough to bypass the lock.
   await ws.unlock("wsp-pwd").catch(() => {});
 });
 
@@ -88,7 +70,6 @@ test("locking the workspace blocks workspace-level mutation too", async () => {
   await refuses("WORKSPACE_LOCKED", "accounts.create", () =>
     ws.accounts.create("Other", "wsp-pwd", MNEMONIC),
   );
-  // Accounts held from before the lock must not keep signing.
   await refuses("ACCOUNT_LOCKED", "signMessage on a stale handle", () =>
     address.signMessage("hello"),
   );
@@ -102,8 +83,6 @@ test("a locked account exposes no plaintext secret through its own surface", asy
 
   await account.lock();
 
-  // Walk everything reachable from the locked account — the object graph is
-  // cyclic (workspace ⇄ account ⇄ wallet), so track visited objects.
   const strings = [];
   const seen = new Set();
   const walk = (value) => {

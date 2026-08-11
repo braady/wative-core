@@ -1,15 +1,4 @@
-// 18 — HybridProviderV3 and the v3 envelope, through the published package.
-//
-// This file exists because the publish gate could not see the release's
-// headline feature at all. Every other example opens a workspace with
-// `Workspace.open({ path })`, which uses the default provider and writes v2, so
-// disabling v3 in all four built bundles — making `HybridProviderV3` silently
-// write v2 records — passed the entire 54-test suite. The same mutation fails
-// the source suite loudly, so the gap was exactly at the packaging boundary,
-// which is the one thing this gate exists to cover.
-//
-// The subpath `wative-core/node` also re-exports the class; that resolution is
-// covered by example 15.
+// 18 — HybridProviderV3 and the v3 envelope, exercised through the published package.
 
 const test = require("node:test");
 const assert = require("node:assert");
@@ -17,11 +6,7 @@ const { mkdtempSync, readFileSync, readdirSync, statSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-// Both from the SAME entry point, which is what the README documents and what
-// the cross-entry-point guard enforces: each entry is its own bundle with its
-// own class identities, so a Workspace from one cannot accept a provider from
-// the other. `wative-core/node` re-exports the provider classes but not
-// Workspace, so pairing them comes from here.
+// Both from the SAME entry point — each entry is its own bundle with its own classes.
 const { Workspace, HybridProviderV3 } = require("wative-core");
 
 const MNEMONIC =
@@ -60,10 +45,6 @@ test("HybridProviderV3 writes v3 records, and they all share one salt", async ()
     );
   }
 
-  // The container salt is the 16 bytes after the version byte. v3's whole point
-  // is that every record shares it, which is what collapses N derivations into
-  // one; v2 mints a fresh salt per record, so this is also what distinguishes
-  // the two formats beyond the version byte alone.
   const saltOf = (rel) => readFileSync(join(root, rel)).subarray(1, 17).toString("hex");
   const salts = new Set(names.map(saltOf));
   assert.strictEqual(salts.size, 1, `expected one container salt, got ${salts.size}`);

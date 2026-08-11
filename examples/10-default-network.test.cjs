@@ -1,6 +1,4 @@
-// 10 — Account default network. `account.setDefaultNetwork(value)` accepts
-// a slug, a chain id, a hex chain id, or a Network instance — and the choice
-// persists across reopen.
+// 10 — setDefaultNetwork accepts a slug, chain id, hex chain id or Network, and persists.
 
 const test = require("node:test");
 const assert = require("node:assert");
