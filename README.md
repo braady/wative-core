@@ -225,13 +225,13 @@ await otherProvider.importContainer(backup);     // same password opens it
 
 ## Key derivation
 
-Passwords are stretched with Argon2id (RFC 9106) at t=3, m=64 MiB, p=1 before
-they ever touch a key. That is deliberately expensive, and an account unlock
-runs one derivation per sealed secret — so the implementation matters.
+Passwords are stretched with Argon2id (RFC 9106) before they ever become a key.
+That is deliberately expensive, which is why unlocking takes a moment and why
+the sections below are about speed rather than correctness — every option
+produces the same keys.
 
-By default it runs on a vendored WebAssembly build: no native binary, no build
-step, nothing to install. Measured over a full workspace lifecycle it is about
-**25x** faster than the pure-JS implementation it replaced.
+Nothing to install: it runs on a bundled WebAssembly build by default, with no
+native binary and no build step.
 
 ### Browser: grant `'wasm-unsafe-eval'`
 
@@ -239,58 +239,10 @@ step, nothing to install. Measured over a full workspace lifecycle it is about
 Content-Security-Policy: script-src 'self' 'wasm-unsafe-eval'
 ```
 
-Without it the browser blocks WebAssembly compilation entirely — synchronously
-and asynchronously, main thread and worker alike. **Nothing throws.** Key
-derivation quietly falls back to a pure-JS implementation that produces
-identical bytes roughly 17x slower, so unlocking a wallet with a dozen addresses
-goes from under a second to tens of seconds. The fallback is announced once on
-the console and reported permanently by `argon2BackendInfo()`.
-
-## Upgrading to 2.3.0
-
-**v1 containers can no longer be opened.** Support for the v1 envelope
-(PBKDF2-HMAC-SHA256, written by wative-core 1.x) was removed and there is no
-migration path in this release. Containers written by any 2.x version are v2 and
-open unchanged.
-
-If you hold a v1 container, recover it with **2.2.x or earlier** before
-upgrading. `exportContainer()` will not do it — it copies sealed bytes without
-decrypting, so the export is as unreadable as the original. Use the accessors
-that return plaintext:
-
-```ts
-// under wative-core 2.2.x — NOT 2.3.0, which can no longer open a v1 container
-import { Workspace, HybridProvider } from "wative-core";
-
-const ws = await Workspace.open(new HybridProvider("~/wallets"), password);
-
-for (const account of ws.accounts) {
-  await account.tryUnlock(password);
-
-  // HD accounts: the mnemonic regenerates every derived key, so it is the only
-  // thing you need.
-  if (account.organizationType === "HD") {
-    console.log(account.slug, "mnemonic:", account.dumpMnemonic());
-    continue;
-  }
-
-  // PK accounts: there is no mnemonic, so every imported key must be kept.
-  // `dumpPrivateKey` lives on the WALLET and takes the VM of the address you
-  // want — a wallet holds at most one address per VM.
-  for (const wallet of account.wallets) {
-    for (const address of wallet.addresses) {
-      console.log(account.slug, wallet.id, address.vm, wallet.dumpPrivateKey(address.vm));
-    }
-  }
-}
-```
-
-Keep that material somewhere safe, upgrade, then re-import it with
-`accounts.create(...)` and `importPrivateKey(...)`.
-
-Three public members were removed with v1: `Provider.passwordTanren`,
-`ContainerProvider.passwordTanren` and `HybridProvider.kdfIterations`. All three
-existed only to expose the PBKDF2 derivation.
+Optional. Without it nothing breaks and nothing throws — key derivation falls
+back to a slower implementation that produces identical results, so unlocking a
+wallet with a dozen addresses takes tens of seconds instead of about one. Grant
+it if that matters to you. `argon2BackendInfo()` reports which one ran.
 
 ### One derivation per container: `HybridProviderV3` (Node only)
 
@@ -300,34 +252,24 @@ import { Workspace, HybridProviderV3 } from "wative-core";
 const ws = await Workspace.open(new HybridProviderV3("~/wallets"), password);
 ```
 
-The default provider derives an Argon2 key per sealed secret, so unlocking an
-account costs one derivation per address — at production parameters that is
-essentially the whole cost, and it grows with the account. `HybridProviderV3`
-derives once per container instead. Measured: unlocking a 50-address account
-goes from 7.3 s to 144 ms, and the v3 figure does not grow with the address
-count.
+`HybridProvider` derives a key per stored secret, so unlocking an account costs
+one derivation per address and gets slower as the account grows.
+`HybridProviderV3` derives once per workspace instead — unlocking a 50-address
+account goes from about 7 seconds to under 200 ms, and stays there however many
+addresses you add.
 
-It is opt-in, and Node-only: it derives through native `@node-rs/argon2`, which
-has no browser build. In a browser use `HybridProvider`, which needs no binary
-and no install and is already about 25x faster than what preceded it.
+It is the Node default where `@node-rs/argon2` is installed, and Node-only: that
+package has no browser build. Construct it yourself only to pick a location, or
+to be sure you get it rather than the fallback.
 
-⚠️ **The speedup applies to records written as v3, not to ones you already
-have.** Pointing `HybridProviderV3` at a container built by 2.x keeps every
-existing secret on its own salt, so it keeps costing one derivation each — the
-container still opens, it just does not get faster. Rewriting an account's
-secrets with `account.resetPassword(old, new)` converts them. A container
-reaches one derivation once all of its records have been written as v3, which
-happens on its own only for containers created under v3.
+Two things to plan for:
 
-The first v3 unlock of an existing container costs one extra derivation, once,
-and converts its CONFIG record to v3 — after which wative-core 2.2.x and earlier
-can no longer open it.
-
-Reads do not depend on the choice — every record carries its own version byte,
-so either 2.3.0 provider opens either format, in both directions. ⚠️ But **older
-library versions cannot read v3**: wative-core 2.2.x and earlier know only v1 and
-v2 and will fail with `Unknown envelope version: 3`. Adopting v3 is a one-way
-door with respect to the library version.
+- **An existing workspace does not get faster on its own.** Secrets written
+  before the switch keep their own keys, so they keep costing one derivation
+  each. `account.resetPassword(old, new)` rewrites them.
+- ⚠️ **Older versions of this library cannot open a V3 workspace**, and there is
+  no way back. Once a workspace has been opened with V3, keep using a version
+  that supports it.
 
 ### Checking which implementation ran
 
@@ -352,7 +294,7 @@ An `examples/` folder ships with the package — runnable JavaScript files demon
 Copy them out of `node_modules` first, then run the whole set:
 
 ```bash
-cp -R node_modules/wative-core/tests wative-examples
+cp -R node_modules/wative-core/examples wative-examples
 node --test wative-examples/
 ```
 
@@ -362,7 +304,7 @@ The copy is required: Node's test runner skips anything under `node_modules`, so
 node node_modules/wative-core/examples/01-quick-start.test.cjs
 ```
 
-Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, and package resolution. See [examples/README.md](./examples/README.md) for the index.
+Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, package resolution, known-answer vectors, locked-state behaviour, and one-key-per-workspace derivation. See [examples/README.md](./examples/README.md) for the full index — it is the list that stays current.
 
 ## What you can do
 
@@ -518,11 +460,10 @@ const svmAddr = hd.wallets[0].addresses.find((a) => a.vm === "svm")!;
 
 const sig = evmAddr.signMessage("hello hedgue");
 
-import { Network } from "wative-core";
-const tx = await evmAddr.buildTransaction({
+const tx = evmAddr.buildTransaction({
   to: "0x1234567890123456789012345678901234567890",
   value: 1_000_000_000_000_000n,
-  network: Network.Ethereum,
+  chainId: 1,
 });
 await evmAddr.signTransaction(tx);
 const tracker = await evmAddr.sendTransaction(tx);
@@ -617,7 +558,7 @@ const evmTracker = await evmAddr.sendTransaction(evmTx);
 const receipt = await evmTracker.whenConfirmed(3);
 ```
 
-For Solana transactions, build instructions with `@solana/web3.js` (or your preferred Solana toolkit) and pass them to `new SvmTransaction({ from, instructions, network })`. The signing, sending, and tracker lifecycle then mirror the EVM flow.
+For Solana transactions, build instructions with `@solana/web3.js` (or your preferred Solana toolkit) and pass them to `new SvmTransaction({ from, recipient, amount, instructions })`. The signing, sending, and tracker lifecycle then mirror the EVM flow.
 
 #### Hand off to an external signer / RPC client
 
@@ -658,9 +599,100 @@ const address = await ws.filter("0xab12345678…cdef", "Address");
 const asset   = await ws.filter("USDC", "Asset");
 ```
 
+## Which storage backend you get
+
+`Workspace.open()` picks one for you unless you pass a provider:
+
+| environment | default | notes |
+|---|---|---|
+| Node, with `import "wative-core/node"` | `HybridProviderV3`, falling back to `HybridProvider` | encrypted files on disk |
+| Browser | `IdbProvider` | IndexedDB, in the current origin |
+| Node, without the node import | *none* — throws, and the message tells you to add the import | |
+
+The optional first argument means a **path** in Node and a **database name** in the browser, so the same call reads sensibly in both:
+
+```ts
+await Workspace.open("my-wallet", password);  // path in Node, database name in a browser
+await Workspace.open({ password });            // omit it for the conventional location / "wative"
+```
+
+Two things to know about the Node default:
+
+- It uses `HybridProviderV3` when `@node-rs/argon2` is installed, and `HybridProvider` when it is not. V3 derives one key per workspace instead of one per stored secret, so unlocking an account with many addresses is a single derivation rather than one each. `@node-rs/argon2` is an optional dependency because a few platforms have no prebuilt binary.
+- Either provider opens a workspace the other wrote, so falling back costs speed, not access. ⚠️ Older versions of this library cannot open a V3 workspace, and there is no way back — check `argon2BackendInfo()` if you need to know which you got.
+
+Pass a provider explicitly whenever you need to configure it — a non-default location, a named database, or acknowledging evictable browser storage:
+
+```ts
+import { Workspace, IdbProvider } from "wative-core";
+
+const provider = await IdbProvider.create("my-wallet", { acknowledgeEvictionRisk: true });
+const ws = await Workspace.open({ provider, password });
+```
+
+## Records
+
+Everything a workspace persists is a `Record` — an account, a network, an asset, the config. You mostly work with the domain objects (`Account`, `Network`, …) and never touch a Record directly; you need this when you write a custom backend, or when you read records straight off a provider.
+
+A Record arrives **locked** and holds ciphertext until you unlock it:
+
+```ts
+const record = await provider.loadRecord("ACCOUNTS", "alice");
+
+record.locked;            // true
+record.value;             // throws RECORD_LOCKED
+
+record.unlock(password);  // decrypts in memory
+record.value;             // your data
+
+record.value.displayName = "Alice Desk";
+await record.save();      // re-encrypts and writes back
+```
+
+| member | behaviour |
+|---|---|
+| `locked` | `true` until `unlock()` succeeds |
+| `value` | throws `RECORD_LOCKED` while locked |
+| `unlock(password)` | `BAD_PASSWORD` if wrong, `DECRYPT_FAILED` if the record cannot be read at all |
+| `save()` | throws if locked, or if the workspace that issued it has since been locked |
+
+Two things to plan for:
+
+- **A handle does not outlive its session.** A Record kept from an earlier unlock stops working once the workspace is locked, and cannot write over a record that has since been replaced or deleted. Reload it rather than holding it.
+- **Records are backend-independent.** `exportContainer()` in a browser imports into a desktop workspace and back — the storage you chose does not change what a workspace is.
+
 ## Custom storage backends
 
-By default, `Workspace.open(...)` stores everything as encrypted files under the path you pass it. If you want to store the workspace somewhere else — a database, an object store, a browser's IndexedDB — extend the `Provider` base class and pass an instance to `Workspace.open()`:
+To store a workspace somewhere else — Redis, S3, SQLite, OPFS, SFTP — extend **`ContainerProvider`** and implement six methods that move bytes. The session, the record API and all the encryption come from the base class, so this is the whole backend:
+
+```ts
+import { Workspace, ContainerProvider, WativeError } from "wative-core";
+
+class MyProvider extends ContainerProvider {
+  #store = new Map<string, Uint8Array>();
+
+  protected _exist(path: string)  { return this.#store.has(path); }
+  protected _read(path: string)   {
+    const v = this.#store.get(path);
+    if (!v) throw new WativeError("RECORD_NOT_FOUND", path);
+    return v;
+  }
+  protected _write(path: string, data: Uint8Array) { this.#store.set(path, data); }
+  protected _remove(path: string)                  { this.#store.delete(path); }
+  protected _ensureDir(_path: string)              {}
+  protected _listItems(prefix: string)             { /* names directly under prefix */ return []; }
+}
+
+const ws = await Workspace.open({ provider: new MyProvider("mem://desk"), password });
+```
+
+Each method may be sync or async — return a value or a promise — so a synchronous store and a network one share the same contract.
+
+Your code never encrypts anything: the base class hands you sealed bytes and opaque paths. A runnable version, including a check that no readable secret reaches the store, is in [19-simple-provider.test.cjs](./examples/19-simple-provider.test.cjs).
+
+### Taking over the record layer as well
+
+Extend `Provider` instead when the storage system has its own encryption or its own idea of a record. You then implement the six primitives *and* the container session and record API — see [07-custom-provider.test.cjs](./examples/07-custom-provider.test.cjs) for a complete one:
 
 ```ts
 import { Workspace, Provider, Record, type RecordInit, type RecordType } from "wative-core";

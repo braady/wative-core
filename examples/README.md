@@ -14,13 +14,13 @@ Most files are written as CommonJS (`.test.cjs`) because the CJS build is the mo
 From the repo root:
 
 ```bash
-node --test tests/
+node --test examples/
 ```
 
 Or run a single file:
 
 ```bash
-node --test tests/01-quick-start.test.cjs
+node --test examples/01-quick-start.test.cjs
 ```
 
 If you are reading this inside `node_modules` after installing the package, copy the folder out before running `--test` — Node's test runner skips anything under `node_modules`. A single file can still be run in place with plain `node <file>`.
@@ -37,7 +37,7 @@ All tests work fully offline — no RPC calls, no real networks. Each test creat
 | [04-network-management.test.cjs](04-network-management.test.cjs) | The 10 pre-loaded networks, adding a brand-new network, overriding a pre-loaded RPC URL via `update()`, dropping user networks, the built-in protection guard. |
 | [05-asset-management.test.cjs](05-asset-management.test.cjs) | The 25 pre-loaded tokens, adding a custom user token, id collision rejection, contract-address collision rejection, dropping user tokens, `workspace.filter(q, "Asset")` search. |
 | [06-address-signing.test.cjs](06-address-signing.test.cjs) | Personal-message signing on EVM and Solana, building a transaction fully offline (no RPC). |
-| [07-custom-provider.test.cjs](07-custom-provider.test.cjs) | Plugging your own storage backend by extending the `Provider` base class. The example uses an in-memory key-value store but the same shape works for databases, cloud storage, and browser storage like IndexedDB. |
+| [07-custom-provider.test.cjs](07-custom-provider.test.cjs) | Taking over the record layer as well, by extending `Provider` rather than `ContainerProvider` — for storage that has its own encryption or its own idea of a record. Longer than [19](19-simple-provider.test.cjs); start there unless you need this. |
 | [08-persistence.test.cjs](08-persistence.test.cjs) | Round-trip across `lock()` + reopen — multiple accounts, user networks, custom assets, and logger configuration. |
 | [09-workspace-filter.test.cjs](09-workspace-filter.test.cjs) | `workspace.filter(query, objective)` for all four objectives — Account (by name or slug), Wallet (by id or tag), Address (by public key), Asset (by symbol or contract address). |
 | [10-default-network.test.cjs](10-default-network.test.cjs) | `account.setDefaultNetwork(value)` accepts a slug, a chain id, a hex chain id, or a `Network` instance. The choice persists across reopen. Unknown networks are rejected. |
@@ -48,22 +48,21 @@ All tests work fully offline — no RPC calls, no real networks. Each test creat
 | [15-package-resolution.test.cjs](15-package-resolution.test.cjs) | Resolution by bare package name — every declared subpath under both `require()` and `import()`, identical export surfaces from the two builds, and the declared Node version. |
 | [16-known-answer-vectors.test.cjs](16-known-answer-vectors.test.cjs) | Exact expected values — published BIP-44 addresses for the canonical mnemonic, a known address from an imported private key, and a fixed EIP-191 signature. Catches derivation from the wrong path or signing with the wrong key. |
 | [17-locked-state.test.cjs](17-locked-state.test.cjs) | What locking enforces — which operations refuse and with which error code, that a locked account holds no mnemonic in the clear, and that unlocking restores identical behaviour. |
+| [18-envelope-v3.test.cjs](18-envelope-v3.test.cjs) | `HybridProviderV3` — writing a workspace that derives one key for the whole workspace instead of one per stored secret, reopening it, and confirming a wrong password is still refused. |
+| [19-simple-provider.test.cjs](19-simple-provider.test.cjs) | The short way to write a storage backend — extend `ContainerProvider` and implement six methods that move bytes. Runs a whole workspace on a `Map`, signs from a derived address, reopens it, and checks that nothing readable reaches the store. |
 
 ## Adapting for your project
 
-In each file, replace:
-
-```js
-const { Workspace } = require("../dist/index.cjs");
-```
-
-with:
+Nothing to change. Every file already imports the package by name:
 
 ```js
 const { Workspace } = require("wative-core");
 ```
 
-once you've done `pnpm add wative-core` (or `npm i wative-core`) in your own project. Or, if your project is ESM-flagged, use `import` instead — both syntax styles resolve to the right entry via the package's `exports` map.
+so once you have run `pnpm add wative-core` (or `npm i wative-core`), copying a
+file into your own project and running it works as-is. If your project is
+ESM-flagged, use `import` instead — both resolve through the package's `exports`
+map.
 
 ## Notes
 

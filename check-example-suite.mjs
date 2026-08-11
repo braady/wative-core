@@ -30,7 +30,7 @@ import { readdirSync } from "node:fs";
 import { join, resolve, relative, basename } from "node:path";
 import { spawnSync } from "node:child_process";
 
-const EXPECTED_TESTS = 58;
+const EXPECTED_TESTS = 61;
 const DEFAULT_TESTS_IN = "examples";
 
 function fail(message) {
