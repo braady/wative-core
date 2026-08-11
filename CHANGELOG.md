@@ -2,6 +2,19 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] — 2026-08-11
+
+Importing a private key is easier, and one import now reaches both chains.
+
+### Changed
+- **BREAKING.** A PK wallet now holds two addresses — the chain you imported for, plus one on the other chain derived from the same secret, so one key controls both. `addresses[0]` is unchanged; `addresses.length` is now 2. Existing stored wallets keep their single address.
+
+### Added
+- `importPrivateKey(pk)` no longer needs a `vm` — the chain is read from the key — and accepts the JSON byte array `solana-keygen` writes.
+
+### Fixed
+- An EVM private key outside the valid range is refused as `INVALID_PRIVATE_KEY` instead of surfacing as an untyped error.
+
 ## [2.4.1] — 2026-08-11
 
 One breaking item, and it is the kind worth reading before upgrading: a

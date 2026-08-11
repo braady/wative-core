@@ -44,28 +44,64 @@ Account "Trading Desk"   (HD)          one mnemonic
 └── …                                  account.deriveWallets(n)
 ```
 
-**PK** — imported keys. A `Wallet` is one key you handed in, on the one chain
-you imported it for. Wallets have no relationship to each other:
+**PK** — imported keys. Each import allocates its own `Wallet`, and that wallet
+gets an address on **both** chains: the key signs on its own curve, and the same
+32 secret bytes seed a keypair on the other one. The chain you imported for
+comes first.
 
 ```
 Account "Cold Storage"   (PK)          no mnemonic
 ├── Wallet 0                           the key passed to accounts.create()
-│   └── Address  vm: "evm"             0x90F8bf6A…
-├── Wallet 1                           account.importPrivateKey(pk, "evm")
-│   └── Address  vm: "evm"             0xFFcf8FDE…
-└── Wallet 2                           account.importPrivateKey(pk, "svm")
-    └── Address  vm: "svm"             7WktogJEd…      one chain per wallet
+│   ├── Address  vm: "evm"             0x90F8bf6A…    the imported key
+│   └── Address  vm: "svm"             HaWmh8svNQ…    same secret, other curve
+├── Wallet 1                           account.importPrivateKey(evmKey)
+│   ├── Address  vm: "evm"             0xFFcf8FDE…
+│   └── Address  vm: "svm"             Fgdy5QRxtP…
+└── Wallet 2                           account.importPrivateKey(svmKey)
+    ├── Address  vm: "svm"             3QVq8D876h…    the imported key
+    └── Address  vm: "evm"             0x1a740984…    same secret, other curve
 ```
 
-A PK account can hold as many keys as you like, and they can be on different
-chains — but it refuses the same identity twice.
+A PK account can hold as many keys as you like, on any mix of chains — but it
+refuses the same identity twice, on either chain.
+
+> ⚠️ **One secret controls both addresses in a PK wallet.** There is only one
+> key to import, so both addresses come from it. Whoever learns that key holds
+> both chains.
+>
+> This is not how an HD account works. There, a slot's two addresses come from
+> two different derivation paths — the mnemonic is shared, the private keys are
+> independent. If you want independent keys per chain, use an HD account, or
+> import a separate key for each and read `addresses[0]` of each wallet.
+
+> **`wallet.addresses` is a list.** It holds one address per `(vm, network)`
+> pair and is free to carry several. Read it rather than assuming a position:
+>
+> ```ts
+> const evm = wallet.addresses.find((a) => a.vm === "evm");
+> ```
+
+**Which chain a key is for is read off the key** — `vm` is optional:
+
+```ts
+await acc.importPrivateKey(evmKey);                    // 64 hex chars  -> evm
+await acc.importPrivateKey(solanaKey);                 // base58        -> svm
+await acc.importPrivateKey(readFileSync("id.json"));   // solana-keygen -> svm
+await acc.importPrivateKey(key, "evm");                // or say so explicitly
+```
+
+The formats do not overlap, so this is a decision rather than a guess. A value
+that is neither is refused with `INVALID_PRIVATE_KEY` — including 32 bytes of
+hex that is not a valid secp256k1 scalar, and a bare 32-byte base58 value,
+which is indistinguishable from a Solana *public* key.
 
 |                        | HD                            | PK                              |
 | ---------------------- | ----------------------------- | ------------------------------- |
 | Created from           | a BIP-39 mnemonic             | one private key                 |
 | Grows with             | `deriveWallets(n)`            | `importPrivateKey(pk, vm)`      |
 | A `Wallet` is          | a derivation slot             | one imported key                |
-| Addresses per `Wallet` | **2** — one evm, one svm      | **1** — the chain you imported  |
+| Addresses per `Wallet`  | **2** — one evm, one svm      | **2** — imported chain first    |
+| Those two addresses     | independent keys, two paths   | **one key, both curves**        |
 | `dumpMnemonic()`       | ✔                             | throws `UNSUPPORTED_OP`         |
 | `sliceWallets(n)`      | ✔                             | throws `UNSUPPORTED_OP`         |
 | `importPrivateKey()`   | throws `UNSUPPORTED_OP`       | ✔                               |
@@ -77,10 +113,10 @@ await hd.deriveWallets(5);                       // slots 1..5, alongside slot 0
 hd.wallets[0].addresses.find((a) => a.vm === "evm");
 hd.wallets[0].addresses.find((a) => a.vm === "svm");
 
-// PK — each import is its own wallet, on one chain
+// PK — each import is its own wallet, with an address on both chains
 const pk = await ws.accounts.create("Cold Storage", password, privateKey);
-await pk.importPrivateKey(anotherEvmKey, "evm"); // -> a new Wallet
-await pk.importPrivateKey(aSolanaKey, "svm");    // -> another new Wallet
+await pk.importPrivateKey(anotherEvmKey);        // -> a new Wallet, vm inferred
+await pk.importPrivateKey(aSolanaKey);           // -> another new Wallet
 ```
 
 ## Install
@@ -150,7 +186,6 @@ await ws.lock();
 | Storage        | encrypted files on disk                | IndexedDB                        |
 | Where it lives | `Workspace.open({ path })`, or default | `IdbProvider.create(name)`       |
 | Extra setup    | none                                   | `Buffer` polyfill                |
-| Keys can vanish| no                                     | yes — storage is evictable       |
 
 `HybridProvider`, `HybridProviderV3` and `FileSink` are re-exported from the
 package root in Node.
@@ -233,17 +268,6 @@ produces the same keys.
 Nothing to install: it runs on a bundled WebAssembly build by default, with no
 native binary and no build step.
 
-### Browser: grant `'wasm-unsafe-eval'`
-
-```
-Content-Security-Policy: script-src 'self' 'wasm-unsafe-eval'
-```
-
-Optional. Without it nothing breaks and nothing throws — key derivation falls
-back to a slower implementation that produces identical results, so unlocking a
-wallet with a dozen addresses takes tens of seconds instead of about one. Grant
-it if that matters to you. `argon2BackendInfo()` reports which one ran.
-
 ### One derivation per container: `HybridProviderV3` (Node only)
 
 ```ts
@@ -262,24 +286,13 @@ It is the Node default where `@node-rs/argon2` is installed, and Node-only: that
 package has no browser build. Construct it yourself only to pick a location, or
 to be sure you get it rather than the fallback.
 
-Two things to plan for:
-
-- **An existing workspace does not get faster on its own.** Secrets written
-  before the switch keep their own keys, so they keep costing one derivation
-  each. `account.resetPassword(old, new)` rewrites them.
-- ⚠️ **Older versions of this library cannot open a V3 workspace**, and there is
-  no way back. Once a workspace has been opened with V3, keep using a version
-  that supports it.
-
 ### Checking which implementation ran
 
 ```ts
 import { argon2BackendInfo } from "wative-core";
 
 argon2BackendInfo();
-// { backend: "wasm", wasm: true, overrides: [] }
-// { backend: "noble", wasm: false, reason: "...", overrides: [] }  ← degraded
-// { backend: "unresolved", wasm: false, ..., overrides: ["node-rs"] }
+// -> { backend: "wasm" | "noble" | "unresolved", wasm, reason?, overrides }
 ```
 
 `backend` is the process-wide default. A provider may carry its own — a
@@ -312,7 +325,7 @@ The library is organized around seven things you'll work with:
 
 - **`Workspace`** — your top-level container. Holds the password, your accounts, your network and asset list, and a built-in logger.
 - **`Account`** — either an HD account (one BIP-39 mnemonic, can derive many wallets) or a PK account (raw private keys you import one at a time). Each account can have its own password or share the workspace password.
-- **`Wallet`** — a unit inside an account. HD wallets carry one EVM and one Solana address; PK wallets carry one address.
+- **`Wallet`** — a unit inside an account, holding one address per `(vm, network)`. Both kinds give you an EVM and a Solana address: an HD slot derives one per chain from the mnemonic, an import derives its sibling from the imported key. Treat `wallet.addresses` as the list it is.
 - **`Address`** — an on-chain identity. Sign messages, build transactions, send them.
 - **`Network`** — chain metadata. 10 networks ship pre-loaded.
 - **`Asset`** — token metadata. 25 tokens ship pre-loaded.
@@ -388,13 +401,10 @@ So a typical lifecycle looks like:
 // First run on a fresh machine — env unset, no <cwd>/.wative2 → creates ~/.wative2
 await Workspace.open({ password: "wsp-pwd" });
 
-// Later, opt the project into a local workspace
-// $ mkdir .wative2
-// Now <cwd>/.wative2 exists → tier 2 wins
+// After `mkdir .wative2`, <cwd>/.wative2 exists and tier 2 wins
 await Workspace.open({ password: "wsp-pwd" });
 
-// Or override via env in CI/staging
-// $ WATIVE_WORKSPACE_PATH=/srv/wative-staging node app.js
+// Or set WATIVE_WORKSPACE_PATH=/srv/wative-staging to override
 await Workspace.open({ password: "wsp-pwd" });
 ```
 
@@ -547,11 +557,7 @@ const evmTx = new EvmTransaction({
   from: evmAddr.publicKey as EvmAddress,
   to: "0x1234567890123456789012345678901234567890" as EvmAddress,
   value: 10_000_000n,
-  // The chain is set HERE, by id. `chainId` is required and has no default,
-  // and there is no `network` field on a transaction — both are refused
-  // rather than guessed, because a signed transaction for the wrong chain is
-  // still a valid transaction on that chain.
-  chainId: 8453 as ChainId,   // Base
+  chainId: 8453 as ChainId,   // required, no default; there is no `network` field
   gasLimit: 21000n,
   maxFeePerGas: 50_000_000_000n,
   maxPriorityFeePerGas: 1_000_000_000n,
@@ -576,8 +582,7 @@ const evmTx = evmAddr.buildTransaction({
   gasLimit: 21000n,
 });
 const rawEvm = evmTx.toRawTx();
-// { from, to, value, data, type, chainId, gasLimit, ... }
-// pass `rawEvm` to web3.eth.sendTransaction, ethers Signer, viem walletClient, etc.
+// { from, to, value, data, type, chainId, gasLimit, ... } — hand to web3/ethers/viem
 ```
 
 ```ts
@@ -587,9 +592,7 @@ const svmTx = svmAddr.buildTransaction({
   amount: 1_000_000n,
 });
 const rawSvm = await svmTx.toRawTx();
-// rawSvm.add(extraIx);
-// rawSvm.sign(theirKeypair);
-// connection.sendRawTransaction(rawSvm.serialize());
+// then rawSvm.add(...) / .sign(...) / connection.sendRawTransaction(rawSvm.serialize())
 ```
 
 For SVM, if you supply `recentBlockhash` at construction time, `toRawTx()` builds entirely offline — no Address binding required.
