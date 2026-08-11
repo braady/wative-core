@@ -1,6 +1,4 @@
-// 12 — Logger. Workspace exposes `ws.logger` after unlock. Write structured
-// logs at any level, change the level via `ws.logger.setLevel(...)`, and the
-// configuration persists across reopen.
+// 12 — Logger: ws.logger after unlock, six levels, setLevel, and config persistence.
 
 const test = require("node:test");
 const assert = require("node:assert");

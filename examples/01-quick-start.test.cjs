@@ -1,5 +1,4 @@
-// 01 — Quick start. Open a workspace, create an HD account, derive wallets,
-// lock down. The shortest end-to-end demo.
+// 01 — Quick start: open a workspace, create an HD account, derive wallets, lock.
 
 const test = require("node:test");
 const assert = require("node:assert");

@@ -1,5 +1,4 @@
-// 02 — HD account flows. derive / slice wallets, dump mnemonic, reset password,
-// reopen a locked workspace.
+// 02 — HD accounts: derive/slice wallets, dump mnemonic, reset password, reopen.
 
 const test = require("node:test");
 const assert = require("node:assert");

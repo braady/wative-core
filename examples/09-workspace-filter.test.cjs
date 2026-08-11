@@ -1,5 +1,4 @@
-// 09 — Workspace search. `filter(query, objective)` returns the live object
-// matching `query` for the given objective: Wallet, Address, Account, or Asset.
+// 09 — Search: filter(query, objective) over Wallet, Address, Account and Asset.
 
 const test = require("node:test");
 const assert = require("node:assert");

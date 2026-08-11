@@ -1,13 +1,4 @@
-// 16 — Known-answer vectors. The other examples check that operations succeed
-// and that results look plausible ("is a string", "starts with 0x"). That kind
-// of assertion still passes if a key is derived from the wrong path, or if a
-// signature is produced by the wrong key — the two failures most likely to lose
-// someone's funds.
-//
-// This file pins exact expected values instead. Every EVM value below was taken
-// from the published BIP-39 / BIP-44 test vectors for the canonical "abandon …
-// about" mnemonic, not from this library's own output, so the assertions are
-// independent ground truth rather than a recording of current behaviour.
+// 16 — Known-answer vectors: exact published BIP-44 values, not "looks plausible".
 
 const test = require("node:test");
 const assert = require("node:assert");
@@ -21,27 +12,21 @@ const { Workspace } = require("wative-core");
 const MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
 
-// m/44'/60'/0'/0/{0,1,2} for the mnemonic above. These are the standard vectors
-// reproduced by every BIP-44 implementation; a mismatch means the derivation
-// path or the seed derivation changed.
+// m/44'/60'/0'/0/{0,1,2}: standard vectors; a mismatch means the derivation moved.
 const EVM_ADDRESSES = [
   "0x9858EfFD232B4033E47d90003D41EC34EcaEda94",
   "0x6Fac4D18c912343BF86fa7049364Dd4E424Ab9C0",
   "0xb6716976A3ebe8D39aCEB04372f22Ff8e6802D7A",
 ];
 
-// Solana derivation for the same mnemonic. Pinned as a regression vector: these
-// are this library's values, so they guard against silent drift in the SVM
-// derivation path rather than asserting an external standard.
+// Solana, same mnemonic — this library's own values, pinned against silent drift.
 const SVM_ADDRESSES = [
   "HAgk14JpMQLgt6rVgv7cBQFJWFto5Dqxi472uT3DKpqk",
   "Hh8QwFUA6MtVu1qAoq12ucvFHNwCcVTV7hpWjeY1Hztb",
   "7WktogJEd2wQ9eH2oWusmcoFTgeYi6rS632UviTBJ2jm",
 ];
 
-// EIP-191 personal_sign of "hello" by the first EVM address. ECDSA here is
-// deterministic (RFC 6979), so the signature is a fixed value, and it verifies
-// externally as recovering to EVM_ADDRESSES[0].
+// EIP-191 "hello" by the first address; RFC 6979 makes it a fixed value.
 const EVM_SIGNATURE_HELLO =
   "0x22f6b9cd7ff4f321e11181c4fe64adeea9469908fb514fbb6001fe022002dfda" +
   "1f4ec9ea436bad14a7823806487d3aeb39b22e2556590922d6a8308971a17e991c";
@@ -130,11 +115,8 @@ test("signatures are bound to the message and to the signing key", async () => {
   const first = addressFor(acc.wallets[0], "evm");
   const second = addressFor(acc.wallets[1], "evm");
 
-  // A different message under the same key must not reuse the signature.
   assert.notStrictEqual(first.signMessage("hello!"), EVM_SIGNATURE_HELLO);
-  // The same message under a different key must not either.
   assert.notStrictEqual(second.signMessage("hello"), EVM_SIGNATURE_HELLO);
-  // And signing is repeatable for a given key and message.
   assert.strictEqual(first.signMessage("hello"), EVM_SIGNATURE_HELLO);
 
   await ws.lock();

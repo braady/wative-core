@@ -1,5 +1,4 @@
-// 05 — Asset management. Pre-loaded tokens, add custom tokens,
-// drop user tokens, search via filter.
+// 05 — Assets: the pre-loaded tokens, adding, dropping, and searching via filter.
 
 const test = require("node:test");
 const assert = require("node:assert");

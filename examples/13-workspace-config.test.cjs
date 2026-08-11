@@ -1,5 +1,4 @@
-// 13 — Workspace config public API. Consumers should never need Provider
-// record access to update business-wide settings.
+// 13 — Workspace config: business-wide settings without reaching for the Provider.
 
 const test = require("node:test");
 const assert = require("node:assert");
@@ -25,9 +24,6 @@ test("workspace config — setBusinessTimezone/getConfig work from release dist"
     && !err.message.includes("Not/AZone")
   ));
 
-  // `config` hands back a frozen snapshot, not the live object. Assigning to it
-  // does not change the workspace — read config through `config` / `getConfig()`
-  // and change it through the setters.
   const snapshot = ws.config;
   assert.strictEqual(Object.isFrozen(snapshot), true);
   snapshot.settlementWindow = "ny-close";

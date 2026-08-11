@@ -1,20 +1,9 @@
-// 15 — Package resolution. Every example now resolves the package by its bare
-// name, so they all exercise the `exports` map; this file is the one that tests
-// the map ITSELF rather than using it incidentally — every declared subpath,
-// under both conditions. It therefore covers the export conditions (`import` vs
-// `require`), the declared subpaths, and the parity between the two builds.
-//
-// It works without installing anything because Node resolves a package's own
-// name from inside that package ("self-reference"), which requires `name` and
-// `exports` to be present — so a broken exports map fails this file outright.
+// 15 — The exports map itself: every subpath, both conditions, and build parity.
 
 const test = require("node:test");
 const assert = require("node:assert");
 
-// "wative-core/node" is where HybridProviderV3 lives after the breaking
-// refactor that folded NodeHybridProvider into it. It was missing here, so the
-// subpath carrying the release's headline feature was the one subpath nothing
-// resolved.
+// "wative-core/node" carries HybridProviderV3 and was once missing from this list.
 const SUBPATHS = [
   "wative-core",
   "wative-core/node",
@@ -34,37 +23,7 @@ test("every declared subpath resolves by bare name under require(), to the CJS b
   }
 });
 
-// A type used in a public signature but not exported is invisible to a
-// TypeScript consumer, who then cannot name what the method returns. That is not
-// visible from JavaScript, so it is asserted against the emitted declarations.
-//
-// Two things this used to get wrong, both of which let a real regression ship:
-//
-//   1. It opened ONLY `dist/index.node.d.cts` — the node+require artifact. The
-//      root subpath emits THREE declaration files (browser/default, node+import,
-//      node+require), and `ContainerState` is the return type of the universal
-//      `Provider.inspectContainer()`. Deleting its export from the browser
-//      artifact alone left this green while every bundler consumer got TS2305.
-//      The artifact list is now derived from the `exports` map itself, so a new
-//      subpath or condition is covered the day it is added rather than the day
-//      someone remembers.
-//
-//   2. It asserted `\bName\b` — bare presence anywhere in the file. A name also
-//      appears in an import specifier, in another type's signature, or in a
-//      comment, so the assertion held whether or not the name was EXPORTED. It
-//      now parses the export clauses and checks membership in the exported set.
-// Keyed by ARTIFACT, not by subpath: the browser and node root builds export
-// legitimately different sets (the node one adds the filesystem provider), so a
-// per-subpath map cannot express "required here, absent there" and would either
-// under-check the node build or falsely fail the browser one.
-//
-// ⚠️ This list is HAND-MAINTAINED, and that is the remaining weakness. The
-// checks below make the ORACLE strong — every declared artifact, and exported
-// rather than merely mentioned — but the INPUT is still a list someone has to
-// remember to extend. `OpenOptions` and `PasswordCheckContext` were both TS2305
-// in a shipped release precisely because nothing derived this list from the
-// public signatures. Deriving it (a referenced-but-not-exported set difference
-// over the emitted declarations) is the real fix and is not done here.
+// Keyed by ARTIFACT, since the browser and node root builds export different sets.
 const EXPECTED_EXPORTS = {
   "./dist/index.d.ts": ["ContainerState", "Argon2BackendInfo", "OpenOptions", "PasswordCheckContext"],
   "./dist/index.node.d.ts": [
@@ -72,9 +31,6 @@ const EXPECTED_EXPORTS = {
     "Argon2BackendInfo",
     "OpenOptions",
     "PasswordCheckContext",
-    // The node root re-exports the filesystem provider surface. `exports.test.ts`
-    // pins this as a deliberate contract, and `18-envelope-v3.test.cjs` reaches
-    // `HybridProviderV3` through the ROOT specifier, not the ./node subpath.
     "HybridProviderV3",
     "HybridProvider",
     "FileSink",
@@ -94,27 +50,11 @@ const EXPECTED_EXPORTS = {
   "./dist/node/index.d.cts": ["HybridProviderV3", "HybridProvider", "FileSink", "FileSinkOptions"],
 };
 
-// The `exports` map declares 10 `types` entries across 9 distinct files
-// (`./dist/index.d.ts` is reached by both the `browser` and `default`
-// conditions). Both totals are asserted EXACTLY rather than as floors: a floor
-// tolerates a gap, so deleting `exports["./node"].require.types` would drop the
-// CJS declarations for the subpath carrying the headline feature and still pass.
-// 32 = 4 (index.d.ts, counted twice — browser and default both resolve to it)
-//    + 8 + 8 (the two node root artifacts) + 4 + 4 (the ./node subpath pair).
-// The artifacts/{evm,svm} pairs contribute none; they are checked for existence
-// and non-emptiness only.
+// Both totals are EXACT, not floors: a floor tolerates the gap this exists to catch.
 const EXPECTED_ARTIFACTS = 10;
 const EXPECTED_ASSERTIONS = 32;
 
-// tsup re-exports rather than re-declares: `export { k as ContainerState } from
-// './chunk.cjs'`. The public name is what follows `as`, or the whole entry when
-// there is no alias. Direct `export declare class X` forms are collected too.
-//
-// Two shapes the two builds do NOT agree on, both of which must be handled or
-// the check reports a false regression: the browser artifact writes inline type
-// modifiers (`type Argon2BackendInfo`) where the node artifact writes the bare
-// name, and a name colliding with a lib type is emitted aliased (`Record$1 as
-// Record`). Strip the modifier first, then resolve the alias.
+// tsup re-exports rather than re-declares, so strip any inline modifier then the alias.
 function exportedNames(dts) {
   const names = new Set();
   for (const m of dts.matchAll(/export\s*(?:type\s*)?\{([^}]*)\}/g)) {
@@ -153,20 +93,10 @@ function declaredTypeArtifacts(exportsMap) {
 test("every type named by a public signature is exported from every artifact that declares it", () => {
   const fs = require("node:fs");
   const path = require("node:path");
-  // Resolve the package under test by NAME, not by `__dirname/..`. This file
-  // runs in two layouts: in the release checkout (examples/ beside dist/, where
-  // `..` is the package root) and copied FLAT into a scratch consumer dir that
-  // installed the tarball (where `..` is the scratch dir's parent and holds no
-  // package.json at all). The second layout is what CI's "published" job uses,
-  // and `__dirname/..` made this test throw ENOENT there — so that job has
-  // never been able to pass. The exports map declares "./package.json", so this
-  // resolves in both.
   const root = path.dirname(require.resolve("wative-core/package.json"));
   const pkg = JSON.parse(fs.readFileSync(path.join(root, "package.json"), "utf8"));
   const artifacts = declaredTypeArtifacts(pkg.exports);
 
-  // If the exports map stops declaring types, this test would otherwise pass by
-  // checking nothing at all — the same vacuity it exists to prevent.
   assert.strictEqual(
     artifacts.length,
     EXPECTED_ARTIFACTS,
@@ -175,11 +105,6 @@ test("every type named by a public signature is exported from every artifact tha
       `or a subpath was added and needs an entry in EXPECTED_EXPORTS.`,
   );
 
-  // Counting `types` entries alone cannot see a subpath that declares NONE: the
-  // total is unchanged, so the exact-count assertion above passes while the new
-  // subpath ships with no declarations at all and its consumers get "could not
-  // find a declaration file". Every subpath with conditions must produce at
-  // least one.
   for (const [subpath, node] of Object.entries(pkg.exports)) {
     if (typeof node === "string") continue; // "./package.json" — a file, not a type surface
     assert.ok(
@@ -202,8 +127,6 @@ test("every type named by a public signature is exported from every artifact tha
       checked++;
     }
   }
-  // Exact, for the same reason as the artifact count: a floor here would let a
-  // whole artifact's expectations be deleted without the suite noticing.
   assert.strictEqual(
     checked,
     EXPECTED_ASSERTIONS,
@@ -234,7 +157,6 @@ test("the CJS and ESM builds expose an identical export surface", async () => {
   const esm = await import("wative-core");
 
   const cjsKeys = Object.keys(cjs).sort();
-  // The ESM namespace carries a `default` interop key that the CJS object does not.
   const esmKeys = Object.keys(esm).filter((k) => k !== "default").sort();
 
   assert.deepStrictEqual(
