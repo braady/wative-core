@@ -547,7 +547,11 @@ const evmTx = new EvmTransaction({
   from: evmAddr.publicKey as EvmAddress,
   to: "0x1234567890123456789012345678901234567890" as EvmAddress,
   value: 10_000_000n,
-  network: Network.Base,
+  // The chain is set HERE, by id. `chainId` is required and has no default,
+  // and there is no `network` field on a transaction — both are refused
+  // rather than guessed, because a signed transaction for the wrong chain is
+  // still a valid transaction on that chain.
+  chainId: 8453 as ChainId,   // Base
   gasLimit: 21000n,
   maxFeePerGas: 50_000_000_000n,
   maxPriorityFeePerGas: 1_000_000_000n,
