@@ -16,10 +16,18 @@ node_modules
 # publish-only repo where `git add -A` is the natural motion.
 .test-output
 
+# Sync provenance, written by scripts/sync-release-dev.mjs. It records the
+# PRIVATE dev repo's commit SHA in `sourceCommit`, which must never reach the
+# public repo. It was previously held back only by `.git/info/exclude`, which is
+# per-clone and not shared — so a fresh clone plus `git add -A` would have
+# published it. An ignore rule that only exists in one working copy is not a
+# release control.
+.wative-core-build-meta.json
+
 # Credentials. `npm publish` runs from THIS repo, so a secret-bearing file sits
 # in the directory the publish guide tells you to `git add .` in — and this repo
 # is public. The commit gate cannot help: .githooks/pre-commit only invokes
-# check-obfuscated.mjs when `dist/` is staged, and that script walks only dist/.
+# check-dist.mjs when `dist/` is staged, and that script walks only dist/.
 # These lines are the sole mechanism.
 #
 # `.env*` is here for the same reason as `.npmrc`, not because anything writes
@@ -34,10 +42,10 @@ node_modules
 package-lock.json
 yarn.lock
 
-# Editor and OS state that can hold PRE-OBFUSCATION content. VS Code Local
+# Editor and OS state that can hold PRE-BUILD content. VS Code Local
 # History keeps whole copies of every saved file inside the workspace, and vim
 # swap files hold entire buffers — in a repo whose protection model is "only
-# obfuscated output ships", these are the direct vector.
+# built output ships", these are the direct vector.
 .history/
 .idea/
 .vscode/
@@ -51,7 +59,7 @@ yarn.lock
 # Scratch dir from the browser lane. `scripts/browser-e2e.mjs` mkdtemps it under
 # WATIVE_E2E_ROOT, which the publish guide points AT THIS REPO — so a run
 # interrupted before its `finally` leaves a harness plus a full esbuild bundle
-# here. The commit gate cannot catch it: check-obfuscated.mjs walks only `dist/`.
+# here. The commit gate cannot catch it: check-dist.mjs walks only `dist/`.
 #
 # `.entry-probe-*/` is deliberately NOT listed. Its only producer,
 # tests/packaging/entry-resolution.test.ts, roots at the dev repo and is never
