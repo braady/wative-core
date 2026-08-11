@@ -2,6 +2,55 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] — 2026-08-11
+
+One breaking item, and it is the kind worth reading before upgrading: a
+transaction no longer guesses which chain it is for. Alongside it, a browser and
+a Node process now each get a working storage backend without being told which
+one to use, and writing your own backend is documented with a runnable example.
+
+### Security
+- **BREAKING. `EvmTransaction` requires `chainId` and no longer defaults to
+  Ethereum mainnet.** Building a transaction without naming a chain used to
+  produce chain 1. That is not a harmless default: a signed transaction is a
+  bearer instrument, so the result was a genuine, broadcastable Ethereum
+  mainnet signature that the caller never asked for. The same applied to anyone
+  who reached for a `network` field — transactions have never had one, the key
+  was discarded, and chain 1 came back. Both are now refused with
+  `PARAMETER_ERROR`, and the message names the `network` trap directly.
+
+  TypeScript callers using the object form were already required to pass
+  `chainId` and are unaffected. This changes behaviour for JavaScript callers,
+  and for the positional form, where `opts` and its `chainId` are now required.
+
+  Nothing changes for `address.buildTransaction()`, which continues to take the
+  chain from the address's own network — that remains the shortest correct way
+  to build a transaction, and `chainId` there is still optional.
+
+  ```js
+  // before — signed for Ethereum, silently
+  new EvmTransaction({ from, to, value });
+
+  // after — name the chain
+  new EvmTransaction({ from, to, value, chainId: 8453 });
+  // or let the address decide
+  address.buildTransaction({ to, value });
+  ```
+
+### Added
+- **A default storage backend in both environments.** `Workspace.open(password)`
+  now works in a browser without importing a provider first, using IndexedDB.
+  Node continues to resolve its filesystem backend from `wative-core/node`.
+- **A worked example of a custom storage backend**, at
+  `examples/19-simple-provider.test.cjs`: six methods that move bytes, running a
+  whole workspace on a `Map`. The published type declarations now ship the
+  documentation for the types you implement against.
+
+### Changed
+- **Node's default backend is now `HybridProviderV3`**, falling back to
+  `HybridProvider` where the optional native dependency has no prebuilt binary.
+  Both read each other's containers, so the fallback costs no data.
+
 ## [2.4.0] — 2026-08-11
 
 Six breaking items, each one an operation that reported success without having
