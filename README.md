@@ -7,8 +7,9 @@
 
 Hyperscale crypto wallet management library — multi-workspace, multi-chain, originally designed for on-chain market makers.
 
-Runs in Node and in the browser. Wallets live in one encrypted container: on disk
-under Node, in IndexedDB in a browser, or in any storage you plug in yourself.
+Runs in Node and in the browser environments. Everything a workspace persists — wallets, accounts, networks, assets — is encrypted `Record` layer, sealed by the library exclusively seen by creators.
+
+Where those records live is yours to choose: files, IndexedDB, Docker, NSA, databases, CDN, RAM, etc. Any encryption algorithm, any format, any storage media.
 
 ## How it fits together
 
@@ -64,15 +65,6 @@ Account "Cold Storage"   (PK)          no mnemonic
 
 A PK account can hold as many keys as you like, on any mix of chains — but it
 refuses the same identity twice, on either chain.
-
-> ⚠️ **One secret controls both addresses in a PK wallet.** There is only one
-> key to import, so both addresses come from it. Whoever learns that key holds
-> both chains.
->
-> This is not how an HD account works. There, a slot's two addresses come from
-> two different derivation paths — the mnemonic is shared, the private keys are
-> independent. If you want independent keys per chain, use an HD account, or
-> import a separate key for each and read `addresses[0]` of each wallet.
 
 > **`wallet.addresses` is a list.** It holds one address per `(vm, network)`
 > pair and is free to carry several. Read it rather than assuming a position:
@@ -463,6 +455,15 @@ await hd.wallets.drop(hd.wallets[10]);
 ```
 
 ### Address — sign messages, build transactions
+
+> ⚠️ **One secret controls both addresses in a PK wallet.** There is only one
+> key to import, so both addresses come from it. Whoever learns that key holds
+> both chains.
+>
+> This is not how an HD account works. There, a slot's two addresses come from
+> two different derivation paths — the mnemonic is shared, the private keys are
+> independent. If you want independent keys per chain, use an HD account, or
+> import a separate key for each and read `addresses[0]` of each wallet.
 
 ```ts
 const evmAddr = hd.wallets[0].addresses.find((a) => a.vm === "evm")!;
