@@ -1,7 +1,7 @@
-// 15 — Package resolution. Every other example imports `../dist/index.cjs`
-// directly, which bypasses the `exports` map in package.json entirely. This
-// file is the only one that resolves the package the way a real consumer does:
-// by its bare name. It therefore covers the export conditions (`import` vs
+// 15 — Package resolution. Every example now resolves the package by its bare
+// name, so they all exercise the `exports` map; this file is the one that tests
+// the map ITSELF rather than using it incidentally — every declared subpath,
+// under both conditions. It therefore covers the export conditions (`import` vs
 // `require`), the declared subpaths, and the parity between the two builds.
 //
 // It works without installing anything because Node resolves a package's own
