@@ -2,6 +2,17 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.4] — 2026-08-12
+
+Correctness fixes across signing, storage and the network layer.
+
+### Fixed
+- Signing twice, or signing after sending, no longer double-signs a transaction or erases its recorded on-chain outcome.
+- A Solana transaction reports the id the network knows it by, not the wallet's own signature — including after a failed broadcast.
+- Requests to a node now have a deadline, so an unresponsive endpoint no longer leaves a transaction hanging indefinitely.
+- A failed unlock leaves no open session and no stray directories behind, and a workspace root that is a symlink is refused.
+- `signTransaction(tx)` returns the type it was given. Type-only: a non-generic value assigned to it now needs the same shape.
+
 ## [2.4.3] — 2026-08-11
 
 Documentation only. No API or behaviour changes from 2.4.2.
