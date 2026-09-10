@@ -2,6 +2,18 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.5] — 2026-09-10
+
+Safer handling of references you hold, of account names, and of sending transactions.
+
+### Added
+- `workspace.close()` — finish with a workspace and release its storage, where `lock()` only ends the session. A closed workspace reports `closed` and refuses further use. `closeAllRpcClients()` is now exported, for releasing cached RPC clients when you are done with them.
+
+### Fixed
+- A `Network`, `workspace.accounts` or `workspace.networks` you obtained before locking can no longer be used to make changes after unlocking — re-read them from the workspace. `networks.add` and `networks.update` refuse the built-in `Network` objects; pass your own instance for that slug.
+- `accounts.create` and `accounts.add` refuse a name another handle on the same storage already holds, whichever storage backend you use. Changing an account's default network now reports a failed save instead of appearing to succeed.
+- Two transactions sent together can no longer both go out under one nonce, and an address stays usable after a lock. `rpcUrl` is validated when you assign it, not only when you pass it in, and is fixed once the transaction is prepared. A failed `Workspace.open()` leaves no storage open, `close()` can be retried, and a second file log keeps its own files.
+
 ## [2.4.4] — 2026-08-12
 
 Correctness fixes across signing, storage and the network layer.
