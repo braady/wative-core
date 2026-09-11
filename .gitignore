@@ -2,17 +2,11 @@ node_modules
 *.log
 .DS_Store
 
-# Local tooling, delivered by the release sync. Not for publication.
-# The example runner is tooling too: it is delivered so the pre-release check and
-# the staged CI job can run it, and ignored so it never reaches a commit here.
+# Local tooling. Not for publication.
 .githooks/
-check-example-suite.mjs
 
 # Captured test output. Node embeds absolute paths in stack traces.
 .test-output
-
-# Build provenance. Never publish it.
-.wative-core-build-meta.json
 
 # Credentials. `npm publish` runs from this repo and this repo is public, so a
 # secret-bearing file would sit in the directory you `git add .` in.
