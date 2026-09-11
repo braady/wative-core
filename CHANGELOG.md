@@ -2,6 +2,16 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.7] — 2026-09-11
+
+Adds more built-in networks and updates the Solana network identifiers.
+
+### Added
+- Four built-in networks ship preloaded, each with its native coin: HyperEVM, HyperEVM Testnet, Robinhood Chain, and Robinhood Chain Testnet.
+
+### Changed
+- The built-in Solana, Solana Testnet and Solana Devnet networks now report new chain ids. If you look a Solana network up by chain id, read it from the resolved network rather than assuming the earlier value.
+
 ## [2.4.6] — 2026-09-11
 
 Fixes across signing, contracts and storage, and corrections to the documentation.

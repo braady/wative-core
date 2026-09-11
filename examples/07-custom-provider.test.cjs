@@ -128,7 +128,7 @@ test("custom provider — full lifecycle against an in-memory backend", async ()
   assert.strictEqual(ws.locked, false);
 
   const slugs = ws.networks.map((n) => n.slug).sort();
-  assert.strictEqual(slugs.length, 10);
+  assert.strictEqual(slugs.length, 14);
   assert.ok(slugs.includes("ethereum"));
   assert.ok(slugs.includes("arbitrum-sepolia"));
 
