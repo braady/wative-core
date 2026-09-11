@@ -1,0 +1,30 @@
+# Publishes wative-core to npm via Trusted Publishing (OIDC) — no NPM_TOKEN.
+# The Trusted Publisher on npmjs.com is bound to this repo + this exact filename
+# (publish.yml). It grants "stage publish", so a run stages the version and a
+# maintainer approves it on npmjs.com (2FA) before it goes public.
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  id-token: write # required: lets the job mint the OIDC token npm trusts
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest # must be GitHub-hosted; self-hosted is unsupported
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      # Trusted publishing needs npm >= 11.5.1.
+      - run: npm install -g npm@latest
+      # No build step and no NODE_AUTH_TOKEN: the checked-out dist/ is already the
+      # published output, and a token would force the legacy path and bypass OIDC.
+      - run: npm publish
