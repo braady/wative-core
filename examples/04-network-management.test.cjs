@@ -8,13 +8,14 @@ const { join } = require("node:path");
 
 const { Workspace, Network } = require("wative-core");
 
-test("network — 10 pre-loaded networks ship at workspace open", async () => {
+test("network — 14 pre-loaded networks ship at workspace open", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-net-builtin-"));
   const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const slugs = ws.networks.map((n) => n.slug).sort();
   assert.deepStrictEqual(slugs, [
-    "arbitrum", "arbitrum-sepolia", "base", "bnbchain", "ethereum", "optimism",
+    "arbitrum", "arbitrum-sepolia", "base", "bnbchain", "ethereum",
+    "hyperevm", "hyperevm-testnet", "optimism", "robinhood", "robinhood-testnet",
     "sepolia", "solana", "solana-devnet", "solana-testnet",
   ]);
 
@@ -42,7 +43,7 @@ test("network — add a brand-new user network", async () => {
   });
   await ws.networks.add(monad);
 
-  assert.strictEqual(ws.networks.length, 11);
+  assert.strictEqual(ws.networks.length, 15);
   assert.strictEqual(ws.networks.bySlug("monad-testnet").chainId, 10143);
   await assert.rejects(ws.networks.add(monad), (err) => err.code === "PARAMETER_ERROR");
 
@@ -64,7 +65,7 @@ test("network — override a pre-loaded RPC URL via update()", async () => {
     ws.networks.bySlug("ethereum").rpcUrl,
     "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY",
   );
-  assert.strictEqual(ws.networks.length, 10);
+  assert.strictEqual(ws.networks.length, 14);
 
   await ws.lock();
 });
