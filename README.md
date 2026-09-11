@@ -1,7 +1,6 @@
 # Wative Core 2
 
 [![npm](https://img.shields.io/npm/v/wative-core?color=cb3837&logo=npm)](https://www.npmjs.com/package/wative-core)
-[![CI](https://github.com/braady/wative-core/actions/workflows/ci.yml/badge.svg)](https://github.com/braady/wative-core/actions/workflows/ci.yml)
 [![node](https://img.shields.io/node/v/wative-core)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-Modified%20MIT-blue)](./LICENSE)
 
@@ -321,7 +320,7 @@ The library is organized around seven things you'll work with:
 - **`Address`** — an on-chain identity. Sign messages, build transactions, send them.
 - **`Network`** — chain metadata. 10 networks ship pre-loaded.
 - **`Asset`** — token metadata. 25 tokens ship pre-loaded.
-- **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`). Tracking stops at first inclusion, so `whenFinalized()` rejects `UNSUPPORTED_OP` unless the node reported finality directly.
+- **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`). Tracking stops at first inclusion, so `whenConfirmed(n)` with `n > 1` rejects `UNSUPPORTED_OP` — call it with no argument and poll `receipt.blockNumber` against the chain head if you need depth — and `whenFinalized()` rejects `UNSUPPORTED_OP` unless the node reported finality directly.
 
 Everything is encrypted on disk under your workspace password.
 
@@ -484,7 +483,7 @@ tracker.on("confirmed", (receipt) => console.log("confirmed", receipt));
 tracker.on("failed",    (err)     => console.error("failed", err));
 
 const hash = await tracker.whenSubmitted();
-const receipt = await tracker.whenConfirmed(3);
+const receipt = await tracker.whenConfirmed();   // no argument — see note below
 
 const sim = await evmAddr.simulateTransaction(tx);
 console.log(sim.gasUsed);
@@ -566,7 +565,7 @@ const evmTx = new EvmTransaction({
 await evmAddr.signTransaction(evmTx);
 const evmTracker = await evmAddr.sendTransaction(evmTx);
 
-const receipt = await evmTracker.whenConfirmed(3);
+const receipt = await evmTracker.whenConfirmed();
 ```
 
 For Solana transactions, build instructions with `@solana/web3.js` (or your preferred Solana toolkit) and pass them to `new SvmTransaction({ from, recipient, amount, instructions })`. The signing, sending, and tracker lifecycle then mirror the EVM flow.
@@ -642,25 +641,31 @@ const ws = await Workspace.open({ provider, password });
 
 Everything a workspace persists is a `Record` — an account, a network, an asset, the config. You mostly work with the domain objects (`Account`, `Network`, …) and never touch a Record directly; you need this when you write a custom backend, or when you read records straight off a provider.
 
-A Record arrives **locked** and holds ciphertext until you unlock it:
+A Record loaded from an **unlocked** provider arrives **already decrypted** — the
+provider opens it with the workspace password as it hands it back. Only a record
+sealed under its own separate password comes back locked:
 
 ```ts
 const record = await provider.loadRecord("ACCOUNTS", "alice");
 
-record.locked;            // true
-record.value;             // throws RECORD_LOCKED
-
-record.unlock(password);  // decrypts in memory
+record.locked;            // false — the workspace password opened it
 record.value;             // your data
 
 record.value.displayName = "Alice Desk";
 await record.save();      // re-encrypts and writes back
+
+// A record sealed under its OWN password is the locked case:
+const sealed = await provider.loadRecord("ACCOUNTS", "bob");
+sealed.locked;            // true
+sealed.value;             // throws RECORD_LOCKED
+sealed.unlock(ownPwd);    // decrypts in memory
+sealed.value;             // your data
 ```
 
 | member | behaviour |
 |---|---|
-| `locked` | `true` until `unlock()` succeeds |
-| `value` | throws `RECORD_LOCKED` while locked |
+| `locked` | `false` when the workspace password opened the record; `true` when it did not, until `unlock()` succeeds |
+| `value` | your data when unlocked; throws `RECORD_LOCKED` while locked |
 | `unlock(password)` | `BAD_PASSWORD` if wrong, `DECRYPT_FAILED` if the record cannot be read at all |
 | `save()` | throws if locked, or if the workspace that issued it has since been locked |
 
@@ -733,7 +738,28 @@ class MyDatabaseProvider extends Provider {
 const ws = await Workspace.open({ provider: new MyDatabaseProvider("postgres://..."), password: "wsp-pwd" });
 ```
 
-`Workspace.open()` accepts any `Provider` subclass — the rest of the library is identical regardless of where state lives.
+`Workspace.open()` accepts any `Provider` subclass, and no library code branches
+on which one you passed.
+
+Two obligations the abstract signatures do not state, and one set of defaults you
+may need to override:
+
+- **`loadRecord` must distinguish "absent" from "unreadable".** A record that is
+  not there MUST reject with `RECORD_NOT_FOUND`. A record that is there but
+  cannot be decrypted MUST come back as a locked `Record`, not as a throw and not
+  by being omitted. A provider that returns a locked `Record` for a row it does
+  not have makes every name look taken, and no account can be created at all.
+- **`loadRecords` must include the rows it could not open**, as locked `Record`s.
+  `Workspace` derives its damaged-record list from exactly that.
+- **`occupiedAccountStems()` defaults to empty**, which is right for a store
+  whose keys collide only on exact equality. On a store whose collision rule is
+  wider — a case-insensitive filesystem, an S3-style key space, a
+  `utf8_general_ci` column — override it to return the lowercased stems.
+  Otherwise a damaged `Alice-Desk` row leaves `alice-desk` looking free and
+  account creation is refused as a name collision. Your bytes are safe either
+  way; the caller just cannot create the account. `accountRecordExists()` and
+  `unreadableRecordSlugs()` carry defaults in the same family — see their JSDoc
+  before overriding either.
 
 ## Imports from sub-paths
 

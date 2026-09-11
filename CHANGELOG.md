@@ -2,6 +2,16 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.6] — 2026-09-11
+
+Fixes across signing, contracts and storage, and corrections to the documentation.
+
+### Fixed
+- What a transaction is signed over is fixed the moment signing starts rather than when it ends, so editing the recipient, amount or data part-way through can no longer change what gets signed. An address left unusable by a send whose outcome never came back now recovers on its own within the same session.
+- The one-call contract helpers use the address you pass them. A completed EVM transaction reports the fee it actually paid, and a failed one reports the reason the network gave.
+- A storage backend is held by one workspace at a time. Locking or closing a workspace hands its backend back, so you can reopen the same one; what is refused is unlocking a workspace whose backend another workspace has taken in the meantime. Two networks whose node addresses differ only cosmetically — a trailing slash, a fragment — count as the same network.
+- The README's transaction examples called for a number of confirmations that is not supported and would always fail, and its description of reading records straight off a storage backend was the reverse of what happens. Both are corrected, along with the obligations a custom backend must meet.
+
 ## [2.4.5] — 2026-09-10
 
 Safer handling of references you hold, of account names, and of sending transactions.
