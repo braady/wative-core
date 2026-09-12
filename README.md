@@ -491,20 +491,22 @@ const sim = await evmAddr.simulateTransaction(tx);
 console.log(sim.gasUsed);
 ```
 
-`transfer()` is the one-call path for moving value — it builds the right transaction for the asset, then you sign and send it like any other:
+`buildTransferPayload()` is the one-call path for moving value — it works out the right payload for the asset (native value, ERC-20 calldata, or SPL instructions). You then pass that payload to `buildTransaction()` and send it like any other transaction:
 
 ```ts
 // native coin (omit `asset`)
-const native = evmAddr.transfer({ to: recipient, amount: 1_000_000_000_000_000n });
+const nativePayload = evmAddr.buildTransferPayload({ to: recipient, amount: 1_000_000_000_000_000n });
 // an ERC-20 / SPL token, by contract address or mint
-const token = evmAddr.transfer({ to: recipient, asset: { address: usdcAddress }, amount: 1_000_000n });
+const tokenPayload = evmAddr.buildTransferPayload({ to: recipient, asset: { address: usdcAddress }, amount: 1_000_000n });
 // or by symbol, resolved against the network's known tokens
-const bySymbol = evmAddr.transfer({ to: recipient, asset: { symbol: "USDC" }, amount: 1_000_000n });
+const bySymbol = evmAddr.buildTransferPayload({ to: recipient, asset: { symbol: "USDC" }, amount: 1_000_000n });
 
-await evmAddr.signTransaction(native);
+// build the transaction from the payload, then sign/send it
+const tx = evmAddr.buildTransaction({ ...nativePayload, chainId: 1 });
+await evmAddr.signTransaction(tx);
 ```
 
-Amounts are in the token's smallest unit. An SPL transfer to a recipient without a token account prepends the account-creation step for you.
+Amounts are in the token's smallest unit. `buildTransaction` fills in nonce/gas/fees for you when you omit them, or uses the values you pass. An SPL transfer to a recipient without a token account prepends the account-creation step for you.
 
 ### Network — pre-loaded networks + your own
 
@@ -791,7 +793,7 @@ class MyDialect extends ChainDialect {
 
   signMessage(ctx: ChainCtx, message: string): string { /* build a digest, sign via ctx._signBytes, format */ }
   buildTransaction(ctx, params) { /* return your chain's transaction */ }
-  transfer(ctx, req)            { /* lower { to, asset, amount } to a transaction */ }
+  buildTransferPayload(ctx, req) { /* lower { to, asset, amount } to a transfer payload */ }
   derive(seed, index)           { /* return { publicKey, privateKey } at this index */ }
   addressFromPrivateKey(pk)     { /* the address a key controls */ }
   privateKeyMatches(pk, publicKey) { /* whether a key controls an address */ }
