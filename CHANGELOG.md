@@ -2,6 +2,15 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] — 2026-09-12
+
+Renames the transfer helper and improves fee handling.
+
+### Changed
+- BREAKING: `address.transfer(...)` is now `address.buildTransferPayload(...)`. It returns the transfer's parameters; pass them to `buildTransaction(...)` to sign and send — for example `buildTransaction({ ...buildTransferPayload({ to, asset, amount }), chainId }).send()`.
+- When you don't set gas fees, they are now chosen with more headroom, so a transaction is less likely to sit unconfirmed while network fees rise.
+- The built-in `evm` and `svm` chains can no longer be replaced through `registerDialect`; registering your own chain under a new name is unaffected.
+
 ## [2.5.0] — 2026-09-12
 
 Adds token-aware transfers and a public way to add your own chain.

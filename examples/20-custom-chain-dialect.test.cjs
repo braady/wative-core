@@ -48,10 +48,10 @@ class XvmDialect extends ChainDialect {
   buildTransaction(ctx, params) {
     return { vm: "xvm", from: String(ctx.publicKey), to: params.to, value: params.value ?? 0n, nonce: params.nonce ?? 0 };
   }
-  transfer(ctx, req) {
-    const tx = { vm: "xvm", from: String(ctx.publicKey), to: req.to, amount: req.amount };
-    if (req.asset && req.asset.address) tx.token = req.asset.address;
-    return tx;
+  buildTransferPayload(ctx, req) {
+    const payload = { vm: "xvm", from: String(ctx.publicKey), to: req.to, amount: req.amount };
+    if (req.asset && req.asset.address) payload.token = req.asset.address;
+    return payload;
   }
   derive(seed, index) {
     const h = toyHash(`${Buffer.from(seed).toString("hex")}:${index}`);
@@ -125,12 +125,12 @@ test("the custom dialect signs, builds a tx, and transfers via a keyless ctx", (
   assert.strictEqual(tx.to, "xvm1recipient");
   assert.strictEqual(tx.nonce, 7);
 
-  const native = dialect.transfer(ctx, { to: "xvm1bob", amount: 500n });
+  const native = dialect.buildTransferPayload(ctx, { to: "xvm1bob", amount: 500n });
   assert.strictEqual(native.to, "xvm1bob");
   assert.strictEqual(native.amount, 500n);
   assert.strictEqual(native.token, undefined);
 
-  const token = dialect.transfer(ctx, { to: "xvm1bob", asset: { address: "xtoken1" }, amount: 5n });
+  const token = dialect.buildTransferPayload(ctx, { to: "xvm1bob", asset: { address: "xtoken1" }, amount: 5n });
   assert.strictEqual(token.token, "xtoken1");
 });
 
