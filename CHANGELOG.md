@@ -2,6 +2,14 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-09-12
+
+Adds token-aware transfers and a public way to add your own chain.
+
+### Added
+- `address.transfer({ to, asset, amount })` sends in one call: the native coin (omit `asset`), a token by its contract address or mint, or a token by symbol. Amounts are given in the token's smallest unit.
+- Support for a chain the library does not ship: subclass the exported `ChainDialect`, implement its methods, and register it with `registerDialect` — the same way you extend `Provider` for storage. `ChainDialect`, `ChainCtx` and the per-chain `EvmSigner` / `SvmSigner` types are now exported.
+
 ## [2.4.7] — 2026-09-11
 
 Adds more built-in networks and updates the Solana network identifiers.
