@@ -2,9 +2,6 @@ node_modules
 *.log
 .DS_Store
 
-# Local tooling. Not for publication.
-.githooks/
-
 # Captured test output. Node embeds absolute paths in stack traces.
 .test-output
 

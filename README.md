@@ -308,7 +308,7 @@ The copy is required: Node's test runner skips anything under `node_modules`, so
 node node_modules/wative-core/examples/01-quick-start.test.cjs
 ```
 
-Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, package resolution, known-answer vectors, locked-state behaviour, and one-key-per-workspace derivation. See [examples/README.md](./examples/README.md) for the full index — it is the list that stays current.
+Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, package resolution, known-answer vectors, locked-state behaviour, one-key-per-workspace derivation, adding a custom chain, and token transfers. See [examples/README.md](./examples/README.md) for the full index — it is the list that stays current.
 
 ## What you can do
 
@@ -317,19 +317,21 @@ The library is organized around seven things you'll work with:
 - **`Workspace`** — your top-level container. Holds the password, your accounts, your network and asset list, and a built-in logger.
 - **`Account`** — either an HD account (one BIP-39 mnemonic, can derive many wallets) or a PK account (raw private keys you import one at a time). Each account can have its own password or share the workspace password.
 - **`Wallet`** — a unit inside an account, holding one address per `(vm, network)`. Both kinds give you an EVM and a Solana address: an HD slot derives one per chain from the mnemonic, an import derives its sibling from the imported key. Treat `wallet.addresses` as the list it is.
-- **`Address`** — an on-chain identity. Sign messages, build transactions, send them.
-- **`Network`** — chain metadata. 10 networks ship pre-loaded.
-- **`Asset`** — token metadata. 25 tokens ship pre-loaded.
+- **`Address`** — an on-chain identity. Sign messages, build transactions, transfer native coins or tokens, and send them.
+- **`Network`** — chain metadata. 14 networks ship pre-loaded.
+- **`Asset`** — token metadata. 29 tokens ship pre-loaded.
 - **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`). Tracking stops at first inclusion, so `whenConfirmed(n)` with `n > 1` rejects `UNSUPPORTED_OP` — call it with no argument and poll `receipt.blockNumber` against the chain head if you need depth — and `whenFinalized()` rejects `UNSUPPORTED_OP` unless the node reported finality directly.
 
 Everything is encrypted on disk under your workspace password.
 
 ### Pre-loaded networks and tokens
 
-| Networks (10) | Tokens (25) |
+| Networks (14) | Tokens (29) |
 |---|---|
 | ethereum, base, bnbchain, arbitrum, optimism | native gas + USDC + USDT on each EVM mainnet (BSC versions are 18-decimal Binance-Peg); plus WETH on ethereum |
+| hyperevm, robinhood | native HYPE on HyperEVM; native ETH on Robinhood Chain |
 | sepolia, arbitrum-sepolia | native ETH on both testnets; plus USDC on arbitrum-sepolia |
+| hyperevm-testnet, robinhood-testnet | native HYPE / native ETH, mirroring their mainnets |
 | solana, solana-testnet, solana-devnet | native SOL + USDC + USDT + WSOL on solana mainnet; native-only on testnets |
 
 ## Examples by domain
@@ -488,6 +490,21 @@ const receipt = await tracker.whenConfirmed();   // no argument — see note bel
 const sim = await evmAddr.simulateTransaction(tx);
 console.log(sim.gasUsed);
 ```
+
+`transfer()` is the one-call path for moving value — it builds the right transaction for the asset, then you sign and send it like any other:
+
+```ts
+// native coin (omit `asset`)
+const native = evmAddr.transfer({ to: recipient, amount: 1_000_000_000_000_000n });
+// an ERC-20 / SPL token, by contract address or mint
+const token = evmAddr.transfer({ to: recipient, asset: { address: usdcAddress }, amount: 1_000_000n });
+// or by symbol, resolved against the network's known tokens
+const bySymbol = evmAddr.transfer({ to: recipient, asset: { symbol: "USDC" }, amount: 1_000_000n });
+
+await evmAddr.signTransaction(native);
+```
+
+Amounts are in the token's smallest unit. An SPL transfer to a recipient without a token account prepends the account-creation step for you.
 
 ### Network — pre-loaded networks + your own
 
@@ -760,6 +777,31 @@ may need to override:
   way; the caller just cannot create the account. `accountRecordExists()` and
   `unreadableRecordSlugs()` carry defaults in the same family — see their JSDoc
   before overriding either.
+
+## Adding a chain
+
+To support a blockchain the library does not ship — its own address format, signing and transactions — subclass **`ChainDialect`** and register it under a vm token. This is the chain-side parallel to extending `Provider` for storage: `Workspace` and `Address` route every per-chain operation through the registered dialect, so no library code branches on which chain you added.
+
+```ts
+import { ChainDialect, registerDialect, type ChainCtx } from "wative-core";
+
+class MyDialect extends ChainDialect {
+  readonly vm = "mychain";
+  readonly curve = "ed25519"; // reuse a built-in signing curve
+
+  signMessage(ctx: ChainCtx, message: string): string { /* build a digest, sign via ctx._signBytes, format */ }
+  buildTransaction(ctx, params) { /* return your chain's transaction */ }
+  transfer(ctx, req)            { /* lower { to, asset, amount } to a transaction */ }
+  derive(seed, index)           { /* return { publicKey, privateKey } at this index */ }
+  addressFromPrivateKey(pk)     { /* the address a key controls */ }
+  privateKeyMatches(pk, publicKey) { /* whether a key controls an address */ }
+  // signMessageEncoded / signTypedData round out the contract
+}
+
+registerDialect("mychain", () => new MyDialect());
+```
+
+Your dialect never receives the private key: it signs through a keyless view (`ctx._signBytes`) the library hands it and declares which built-in curve to use. A runnable end-to-end example — a fictional chain that signs, builds a transaction, transfers and derives — is in [20-custom-chain-dialect.test.cjs](./examples/20-custom-chain-dialect.test.cjs).
 
 ## Imports from sub-paths
 

@@ -34,8 +34,8 @@ All tests work fully offline — no RPC calls, no real networks. Each test creat
 | [01-quick-start.test.cjs](01-quick-start.test.cjs) | Open a workspace, create an HD account, derive 5 wallets, inspect EVM + Solana addresses, lock. |
 | [02-hd-account.test.cjs](02-hd-account.test.cjs) | HD-specific flows — deriving / slicing wallets, dumping the mnemonic, account-level passwords with `resetPassword`, round-trip across lock + reopen. |
 | [03-pk-account.test.cjs](03-pk-account.test.cjs) | PK accounts — creating from a private key, importing more keys, and the three key formats accepted (EVM hex, Solana base58, `solana-keygen` JSON) with the chain inferred from the key. Also shows each import producing an address on both chains, duplicate-import rejection, and dropping wallets. |
-| [04-network-management.test.cjs](04-network-management.test.cjs) | The 10 pre-loaded networks, adding a brand-new network, overriding a pre-loaded RPC URL via `update()`, dropping user networks, the built-in protection guard. |
-| [05-asset-management.test.cjs](05-asset-management.test.cjs) | The 25 pre-loaded tokens, adding a custom user token, id collision rejection, contract-address collision rejection, dropping user tokens, `workspace.filter(q, "Asset")` search. |
+| [04-network-management.test.cjs](04-network-management.test.cjs) | The 14 pre-loaded networks, adding a brand-new network, overriding a pre-loaded RPC URL via `update()`, dropping user networks, the built-in protection guard. |
+| [05-asset-management.test.cjs](05-asset-management.test.cjs) | The 29 pre-loaded tokens, adding a custom user token, id collision rejection, contract-address collision rejection, dropping user tokens, `workspace.filter(q, "Asset")` search. |
 | [06-address-signing.test.cjs](06-address-signing.test.cjs) | Personal-message signing on EVM and Solana, building a transaction fully offline (no RPC). |
 | [07-custom-provider.test.cjs](07-custom-provider.test.cjs) | Taking over the record layer as well, by extending `Provider` rather than `ContainerProvider` — for storage that has its own encryption or its own idea of a record. Longer than [19](19-simple-provider.test.cjs); start there unless you need this. |
 | [08-persistence.test.cjs](08-persistence.test.cjs) | Round-trip across `lock()` + reopen — multiple accounts, user networks, custom assets, and logger configuration. |
@@ -50,6 +50,8 @@ All tests work fully offline — no RPC calls, no real networks. Each test creat
 | [17-locked-state.test.cjs](17-locked-state.test.cjs) | What locking enforces — which operations refuse and with which error code, that a locked account holds no mnemonic in the clear, and that unlocking restores identical behaviour. |
 | [18-envelope-v3.test.cjs](18-envelope-v3.test.cjs) | `HybridProviderV3` — writing a workspace that derives one key for the whole workspace instead of one per stored secret, reopening it, and confirming a wrong password is still refused. |
 | [19-simple-provider.test.cjs](19-simple-provider.test.cjs) | The short way to write a storage backend — extend `ContainerProvider` and implement six methods that move bytes. Runs a whole workspace on a `Map`, signs from a derived address, reopens it, and checks that nothing readable reaches the store. |
+| [20-custom-chain-dialect.test.cjs](20-custom-chain-dialect.test.cjs) | Adding a whole new blockchain — subclass `ChainDialect` and `registerDialect` its vm, the same shape as extending `Provider`. A fictional `xvm` chain becomes a first-class network (and an unregistered vm is still refused), its dialect signs / builds a transaction / transfers / derives through the keyless `ChainCtx`, and `XvmSigner` names the per-chain signer just as `EvmSigner` / `SvmSigner` do. |
+| [21-token-transfer.test.cjs](21-token-transfer.test.cjs) | `address.transfer({ to, asset, amount })` — one intent lowered per chain: native value, EVM ERC-20 by contract address, SVM SPL by mint (with an idempotent recipient-ATA create), and by token `symbol`. All built offline; `amount` is raw base units. |
 
 ## Adapting for your project
 
@@ -69,3 +71,4 @@ map.
 - **No real money.** The mnemonics and private keys used in these tests are well-known testing values. Never fund them.
 - **No network calls.** Tests sign offline only. To actually broadcast a transaction, configure a real RPC URL on the network and call `address.sendTransaction(tx)` — see the README for the full lifecycle.
 - **Custom Provider example** uses a deliberately simple cipher (XOR). Real Providers should seal data with an authenticated cipher — see the bundled `HybridProvider` for a reference implementation.
+- **Custom chain example** uses a fictional chain with a toy hash, toy address/transaction formats, and a stand-in signer — illustrative only. A real chain declares a real curve and real formats; the example shows the extension *shape*, not production cryptography.
