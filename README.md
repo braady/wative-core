@@ -477,7 +477,7 @@ const tx = evmAddr.buildTransaction({
   value: 1_000_000_000_000_000n,
   chainId: 1,
 });
-await evmAddr.signTransaction(tx);
+await tx.sign();                              // resolves once the signature exists
 const tracker = await evmAddr.sendTransaction(tx);
 
 tracker.on("change",    (state)   => console.log("state →", state.status));
@@ -491,6 +491,8 @@ const sim = await evmAddr.simulateTransaction(tx);
 console.log(sim.gasUsed);
 ```
 
+`address.signTransaction(tx)` returns straight away and does not wait for the signature. To use the signed bytes (`tx.rawTransaction`, `tx.hash`), `await tx.sign()` first — it resolves once signing is done and is safe to call more than once.
+
 `buildTransferPayload()` is the one-call path for moving value — it works out the right payload for the asset (native value, ERC-20 calldata, or SPL instructions). You then pass that payload to `buildTransaction()` and send it like any other transaction:
 
 ```ts
@@ -503,10 +505,31 @@ const bySymbol = evmAddr.buildTransferPayload({ to: recipient, asset: { symbol: 
 
 // build the transaction from the payload, then sign/send it
 const tx = evmAddr.buildTransaction({ ...nativePayload, chainId: 1 });
-await evmAddr.signTransaction(tx);
+await tx.sign();
 ```
 
 Amounts are in the token's smallest unit. `buildTransaction` fills in nonce/gas/fees for you when you omit them, or uses the values you pass. An SPL transfer to a recipient without a token account prepends the account-creation step for you.
+
+#### Signing bytes you built yourself
+
+If you build and broadcast transactions yourself and only need a signature, two methods sign exactly the bytes you give them. Neither hashes its input, adds a prefix, or touches the network.
+
+```ts
+// EVM: sign a 32-byte digest you computed (for example the keccak of an encoded transaction)
+const { r, s, recovery, signature } = evmAddr.signDigest("0x" + "ab".repeat(32));
+// r, s: 32-byte hex (s is low); recovery: 0 or 1; signature: 65 bytes, v = 27 + recovery
+
+// SVM: sign arbitrary bytes, for example a serialized Solana transaction message
+const { signature: sig58, signatureHex } = svmAddr.signBytes(messageBytes);
+```
+
+- Both take a `Uint8Array` or a `0x`-prefixed hex string of whole bytes. Base64 and hex without the prefix are refused; decode base64 yourself first.
+- `signDigest` requires exactly 32 bytes.
+- `signBytes` accepts any length, including binary data that `signMessageEncoded(..., "ed25519")` cannot carry, because that method takes text.
+- The 65-byte `signature` uses the message-signing convention for `v`. For a typed transaction use `recovery` as the y-parity, and for a legacy EIP-155 transaction use `35 + 2 * chainId + recovery`.
+- `signDigest` works only on an EVM address and `signBytes` only on an SVM address. Each needs the account unlocked.
+
+> ⚠️ These sign anything you hand them, with none of the checks `signTypedData` applies. Only pass digests and bytes you assembled yourself.
 
 ### Network — pre-loaded networks + your own
 
@@ -581,7 +604,8 @@ const evmTx = new EvmTransaction({
   maxFeePerGas: 50_000_000_000n,
   maxPriorityFeePerGas: 1_000_000_000n,
 });
-await evmAddr.signTransaction(evmTx);
+evmAddr.signTransaction(evmTx);  // checks `from` and attaches the transaction to this address
+await evmTx.sign();               // resolves once the signature exists
 const evmTracker = await evmAddr.sendTransaction(evmTx);
 
 const receipt = await evmTracker.whenConfirmed();
