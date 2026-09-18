@@ -2,6 +2,15 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.2] — 2026-09-18
+
+Adds two methods for signing bytes you built yourself.
+
+### Added
+- `address.signDigest(digest)` signs a 32-byte digest on an EVM address exactly as given, with no hashing and no prefix. It returns `r`, `s`, the recovery id (0 or 1), and a 65-byte `signature` with `v = 27 + recovery`. Build `v` from `recovery` for a typed or EIP-155 transaction.
+- `address.signBytes(message)` signs arbitrary bytes on an SVM address exactly as given, for example a serialized Solana transaction message. It returns the 64-byte signature as base58 and as hex.
+- Both take a `Uint8Array` or a `0x`-prefixed hex string of whole bytes, need the account unlocked, and sign whatever they are given, so pass only data you assembled yourself.
+
 ## [2.5.1] — 2026-09-12
 
 Renames the transfer helper and improves fee handling.
