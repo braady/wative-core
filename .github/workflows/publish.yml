@@ -1,7 +1,9 @@
 # Publishes wative-core to npm via Trusted Publishing (OIDC) — no NPM_TOKEN.
 # The Trusted Publisher on npmjs.com is bound to this repo + this exact filename
-# (publish.yml). It grants "stage publish", so a run stages the version and a
-# maintainer approves it on npmjs.com (2FA) before it goes public.
+# (publish.yml) and allows direct `npm publish`, so a successful run publishes the
+# version with no staging or 2FA approval step; npm's publish-time scan makes it
+# installable a few minutes later. With that allowance off (stage-only), npm
+# rejects the final step with 403 "OIDC permission denied for this action".
 name: Publish to npm
 
 on:
