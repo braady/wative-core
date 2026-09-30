@@ -317,7 +317,9 @@ interface DestinationGuardOptions {
     readonly screen?: DestinationScreener;
 }
 
-type WativeErrorCode = "WORKSPACE_LOCKED" | "ACCOUNT_LOCKED" | "RECORD_LOCKED" | "BAD_PASSWORD" | "WEAK_PASSWORD" | "RECORD_NOT_FOUND" | "PROVIDER_IO" | "PERMISSION_DENIED" | "DISK_FULL" | "PARAMETER_ERROR"
+type WativeErrorCode = "WORKSPACE_LOCKED" | "ACCOUNT_LOCKED"
+
+ | "WALLET_DISABLED" | "RECORD_LOCKED" | "BAD_PASSWORD" | "WEAK_PASSWORD" | "RECORD_NOT_FOUND" | "PROVIDER_IO" | "PERMISSION_DENIED" | "DISK_FULL" | "PARAMETER_ERROR"
 
  | "IRREGULAR_DESTINATION" | "DECRYPT_FAILED" | "ENCRYPT_FAILED" | "ALGORITHM_IRREVERSIBLE" | "INVALID_MNEMONIC" | "INVALID_PRIVATE_KEY" | "UNSUPPORTED_NETWORK" | "TX_BUILD_FAILED" | "TX_SIGN_FAILED" | "TX_SUBMIT_FAILED" | "TX_TIMEOUT" | "TX_DROPPED" | "TX_ABORTED" | "RPC_UNREACHABLE"
 
@@ -769,6 +771,8 @@ declare class Wallet {
     readonly id: number;
     lastBalanceUpdateTime?: number;
     constructor(init: WalletInit);
+    
+    get disabled(): boolean;
     get addresses(): ReadonlyArray<Address>;
     
     _addAddress(address: Address): void;
@@ -837,10 +841,6 @@ declare class Account {
     encryptionAlgorithm: string;
     signature: string;
     ppCiphertext?: string;
-    disabledSlots?: ReadonlyArray<{
-        from: number;
-        to: number;
-    }>;
     readonly hasOwnPassword: boolean;
     readonly _workspace: Workspace;
     readonly wallets: WalletCollection;
@@ -852,8 +852,22 @@ declare class Account {
     setDefaultNetwork(value: NetworkLike): Promise<void>;
     rename(displayName: string): Promise<void>;
     setDisplayName(displayName: string): Promise<void>;
-    setDisabledAddressNos(addressNos: ReadonlyArray<number>): Promise<void>;
-    setDisabledSlots(slots: ReadonlyArray<{
+    
+    getDisabledSlots(): {
+        from: number;
+        to: number;
+    }[];
+    
+    disableAddressNos(addressNos: ReadonlyArray<number>): Promise<void>;
+    
+    disableSlots(slots: ReadonlyArray<{
+        from: number;
+        to: number;
+    }>): Promise<void>;
+    
+    enableAddressNos(addressNos: ReadonlyArray<number>): Promise<void>;
+    
+    enableSlots(slots: ReadonlyArray<{
         from: number;
         to: number;
     }>): Promise<void>;
@@ -867,6 +881,8 @@ declare class Account {
     checkPassword(password: string): Promise<boolean>;
     
     dumpMnemonic(): string;
+    
+    getWalletList(force?: boolean): Wallet[];
     
     deriveWallets(count: number): Promise<{
         before: number;
@@ -900,6 +916,8 @@ declare class Account {
     
     _restoreUnlockPassword(pwd: string | null): void;
     
+    _isDisabledSlot(index: number): boolean;
+    
     
     _wipeWalletKeys(...wallets: Wallet[]): void;
 }
@@ -918,7 +936,7 @@ interface WalletCollection extends ReadonlyArray<Wallet> {
     byId(id: number): Wallet | null;
 }
 
-declare function newMnemonic(): string;
+declare function newMnemonic(wordCount?: 12 | 15 | 18 | 21 | 24): string;
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
 type SinkConfig = {

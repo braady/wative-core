@@ -2,6 +2,19 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.4] — 2026-09-29
+
+Reworks disabling wallet slots, adds a filtered wallet list, and improves mnemonic generation.
+
+### Added
+- Disable and re-enable derivation slots with `disableSlots`/`disableAddressNos`, `enableSlots`/`enableAddressNos` and `getDisabledSlots`; `getWalletList(force?)` returns enabled wallets by default (natural ids kept) or all of them with a `wallet.disabled` flag. `newMnemonic(wordCount?)` now generates any standard BIP-39 length, still defaulting to 12.
+
+### Changed
+- BREAKING: `setDisabledSlots`, `setDisabledAddressNos` and the `disabledSlots` property are removed — use the add/remove/read methods above. Disabling is now a reversible marker that hides a wallet from `getWalletList()` and blocks its signing, sending and key export with the new `WALLET_DISABLED` error, without changing which indices `deriveWallets` produces.
+
+### Fixed
+- Invalid-mnemonic errors now name the real defect — bad checksum, unknown word, or wrong length — instead of sometimes reporting a checksum failure as an unknown word.
+
 ## [2.5.3] — 2026-09-19
 
 Adds foreign-transaction signing, sign-in, a keyless chain client, and Solana versioned transactions.
