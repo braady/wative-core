@@ -1,4 +1,4 @@
-import { c as Address, x as EvmTxBuildParams, w as EvmTransaction } from './workspace-CZO-ANYP.js';
+import { c as Address, x as EvmTxBuildParams, w as EvmTransaction } from './workspace-kmsiTC-d.cjs';
 
 interface AbiItem {
     type?: string;
