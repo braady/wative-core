@@ -2,6 +2,16 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.5] — 2026-10-03
+
+Adds reorder methods for networks and per-network assets, and a dedicated error for duplicate adds.
+
+### Added
+- Reorder with `workspace.networks.move(slug, toIndex)` and `workspace.moveAsset(network, id, toIndex)`, which move a network, or a token within its network, to a 0-based final position; the new order is what the networks list and `assets(network)` return, and it persists.
+
+### Changed
+- BREAKING: a duplicate add now rejects with the new `DUPLICATE_IDENTITY` code instead of `PARAMETER_ERROR` (29 codes total) — a duplicate account or network slug, an asset id, an asset `(network, contractAddress)` pair or native slot, a re-imported key identity, or a duplicate wallet id. Callers branching on `err.code === "PARAMETER_ERROR"` for these must switch. Malformed input and a network `(chainId, rpcUrl)` collision stay `PARAMETER_ERROR`.
+
 ## [2.5.4] — 2026-09-29
 
 Reworks disabling wallet slots, adds a filtered wallet list, and improves mnemonic generation.

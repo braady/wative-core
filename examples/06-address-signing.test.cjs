@@ -6,7 +6,7 @@ const { mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-const { Workspace, Network } = require("wative-core");
+const { Workspace } = require("wative-core");
 
 const MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -36,7 +36,7 @@ test("address — buildTransaction convenience helper (offline)", async () => {
   const acc = await ws.accounts.create("Desk", "wsp-pwd", MNEMONIC);
   const evm = acc.wallets[0].addresses.find((a) => a.vm === "evm");
 
-  const tx = await evm.buildTransaction({
+  const tx = evm.buildTransaction({
     to: "0x1234567890123456789012345678901234567890",
     value: 1_000_000_000_000_000n,
     chainId: 1,
@@ -45,7 +45,6 @@ test("address — buildTransaction convenience helper (offline)", async () => {
     maxFeePerGas: 50_000_000_000n,
     maxPriorityFeePerGas: 1_000_000_000n,
     type: 2,
-    network: Network.Ethereum,
   });
 
   assert.strictEqual(tx.from.toLowerCase(), evm.publicKey.toLowerCase());
