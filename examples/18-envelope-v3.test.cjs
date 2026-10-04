@@ -29,7 +29,7 @@ function versions(root) {
 
 test("HybridProviderV3 writes v3 records, and they all share one salt", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-v3-example-"));
-  const ws = await Workspace.open(new HybridProviderV3(root), PW, true);
+  const ws = await Workspace.open(new HybridProviderV3(root), PW);
   const acc = await ws.accounts.create("V3 Desk", PW, MNEMONIC);
   await acc.deriveWallets(3);
   await ws.lock();
@@ -52,7 +52,7 @@ test("HybridProviderV3 writes v3 records, and they all share one salt", async ()
 
 test("a v3 container reopens and yields the original secrets", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-v3-example-"));
-  let ws = await Workspace.open(new HybridProviderV3(root), PW, true);
+  let ws = await Workspace.open(new HybridProviderV3(root), PW);
   const created = await ws.accounts.create("V3 Desk", PW, MNEMONIC);
   await created.deriveWallets(2);
   const expected = created.wallets.map((w) => w.addresses.map((a) => a.publicKey).join(","));
@@ -72,7 +72,7 @@ test("a v3 container reopens and yields the original secrets", async () => {
 
 test("a wrong password is rejected, and does not damage the container", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-v3-example-"));
-  let ws = await Workspace.open(new HybridProviderV3(root), PW, true);
+  let ws = await Workspace.open(new HybridProviderV3(root), PW);
   await ws.accounts.create("V3 Desk", PW, MNEMONIC);
   await ws.lock();
 

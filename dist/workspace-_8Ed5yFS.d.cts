@@ -129,6 +129,8 @@ interface NetworkCollection extends ReadonlyArray<Network> {
     drop(network: Network): Promise<void>;
     
     update(network: Network): Promise<Network>;
+    
+    move(slug: Slug, toIndex: number): Promise<void>;
     bySlug(slug: Slug): Network | null;
     byChainId(id: ChainId): Network | null;
 }
@@ -320,6 +322,8 @@ interface DestinationGuardOptions {
 type WativeErrorCode = "WORKSPACE_LOCKED" | "ACCOUNT_LOCKED"
 
  | "WALLET_DISABLED" | "RECORD_LOCKED" | "BAD_PASSWORD" | "WEAK_PASSWORD" | "RECORD_NOT_FOUND" | "PROVIDER_IO" | "PERMISSION_DENIED" | "DISK_FULL" | "PARAMETER_ERROR"
+
+ | "DUPLICATE_IDENTITY"
 
  | "IRREGULAR_DESTINATION" | "DECRYPT_FAILED" | "ENCRYPT_FAILED" | "ALGORITHM_IRREVERSIBLE" | "INVALID_MNEMONIC" | "INVALID_PRIVATE_KEY" | "UNSUPPORTED_NETWORK" | "TX_BUILD_FAILED" | "TX_SIGN_FAILED" | "TX_SUBMIT_FAILED" | "TX_TIMEOUT" | "TX_DROPPED" | "TX_ABORTED" | "RPC_UNREACHABLE"
 
@@ -1066,6 +1070,8 @@ declare class Workspace {
     addAsset(asset: Asset): Promise<Asset>;
     
     dropAsset(id: AssetId): Promise<void>;
+    
+    moveAsset(network: NetworkLike, id: AssetId, toIndex: number): Promise<void>;
     
     _findUserAssetOnNetwork(slug: Slug): {
         id: number;

@@ -76,7 +76,7 @@ test("PK account — duplicate import is rejected", async () => {
   const ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
   const acc = await ws.accounts.create("HotWallet", "wsp-pwd", EVM_PK, undefined, { kind: "PK" });
-  await assert.rejects(acc.importPrivateKey(EVM_PK, "evm"), (err) => err.code === "PARAMETER_ERROR");
+  await assert.rejects(acc.importPrivateKey(EVM_PK, "evm"), (err) => err.code === "DUPLICATE_IDENTITY");
 
   await ws.lock();
 });

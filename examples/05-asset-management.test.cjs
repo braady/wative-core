@@ -64,7 +64,7 @@ test("asset — id and address collisions are rejected", async () => {
     contractAddress: "0x1234567890123456789012345678901234567890",
     network: Network.Ethereum,
   });
-  await assert.rejects(ws.addAsset(dupId), (err) => err.code === "PARAMETER_ERROR");
+  await assert.rejects(ws.addAsset(dupId), (err) => err.code === "DUPLICATE_IDENTITY");
 
   const dupAddr = new Asset({
     id: 201,
@@ -74,7 +74,7 @@ test("asset — id and address collisions are rejected", async () => {
     contractAddress: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
     network: Network.Ethereum,
   });
-  await assert.rejects(ws.addAsset(dupAddr), (err) => err.code === "PARAMETER_ERROR");
+  await assert.rejects(ws.addAsset(dupAddr), (err) => err.code === "DUPLICATE_IDENTITY");
 
   await ws.lock();
 });

@@ -45,7 +45,7 @@ test("network — add a brand-new user network", async () => {
 
   assert.strictEqual(ws.networks.length, 15);
   assert.strictEqual(ws.networks.bySlug("monad-testnet").chainId, 10143);
-  await assert.rejects(ws.networks.add(monad), (err) => err.code === "PARAMETER_ERROR");
+  await assert.rejects(ws.networks.add(monad), (err) => err.code === "DUPLICATE_IDENTITY");
 
   await ws.lock();
 });
