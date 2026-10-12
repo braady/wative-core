@@ -119,6 +119,7 @@ declare class Network {
     static readonly HyperEVMTestnet: Network;
     static readonly Robinhood: Network;
     static readonly RobinhoodTestnet: Network;
+    static readonly Ink: Network;
     static builtin(slug: Slug): Network | null;
     static all(): readonly Network[];
     static isBuiltinSlug(slug: Slug): boolean;
@@ -801,6 +802,7 @@ declare class Wallet {
     clearTags(): Promise<void>;
     
     dumpPrivateKey(vm: ChainVM): string;
+    
     drop(): Promise<void>;
     readonly _account: Account;
 }
@@ -844,7 +846,10 @@ declare class Account {
     readonly organizationType: AccountOrgType;
     encryptionAlgorithm: string;
     signature: string;
-    ppCiphertext?: string;
+    
+    get ppCiphertext(): string | undefined;
+    
+    set ppCiphertext(_value: string | undefined);
     readonly hasOwnPassword: boolean;
     readonly _workspace: Workspace;
     readonly wallets: WalletCollection;
@@ -939,7 +944,6 @@ interface WalletCollection extends ReadonlyArray<Wallet> {
     drop(wallet: Wallet): Promise<void>;
     byId(id: number): Wallet | null;
 }
-
 declare function newMnemonic(wordCount?: 12 | 15 | 18 | 21 | 24): string;
 
 type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";

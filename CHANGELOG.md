@@ -2,6 +2,23 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.6] — 2026-10-11
+
+Adds the Ink network and a portable, password-protected backup of an account's seed phrase, and tightens the rules for account and network names.
+
+### Added
+- Ink (chain 57073) is a built-in network, with ETH, USDC and USDT0 — 15 networks and 32 tokens in total.
+- `sealMnemonic(...)` and `openMnemonic(...)` back up and restore one account's seed phrase as a portable copy, encrypted under the workspace password; opening it against the wrong account is refused.
+
+### Changed
+- BREAKING: account and network names are 3–32 characters (a name longer than 32 no longer loads), and a display name may be as short as 3.
+- BREAKING: `wallet.drop()` applies to private-key accounts only; shorten an HD account with `sliceWallets(...)`, or hide an index with `disableSlots(...)`.
+- When `accounts.create` rejects a secret, the error code now matches it: `INVALID_MNEMONIC` for a seed phrase, `INVALID_PRIVATE_KEY` for a private key.
+- A seed phrase pasted with surrounding quotes or trailing punctuation is now accepted.
+
+### Fixed
+- Opening a workspace no longer fails because one stored record cannot be read; the rest load and the unreadable ones are listed by `workspace.damagedAccountSlugs`.
+
 ## [2.5.5] — 2026-10-03
 
 Adds reorder methods for networks and per-network assets, and a dedicated error for duplicate adds.
