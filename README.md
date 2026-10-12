@@ -607,22 +607,21 @@ await hd.setDefaultNetwork(Network.Base);
 ### Asset — pre-loaded tokens + custom tokens
 
 ```ts
-import { Asset, Network, type AssetId } from "wative-core";
+import { Network } from "wative-core";
 
 const ethAssets = await ws.assets(Network.Ethereum);
 console.log(ethAssets.map((a) => a.symbol));
 
-const myToken = new Asset({
-  id: 200 as AssetId,
+const eth = ws.networks.bySlug("ethereum");
+const pepe = await eth.assets.add({
   symbol: "PEPE",
   name: "Pepe",
   decimals: 18,
   contractAddress: "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
-  network: Network.Ethereum,
 });
-await ws.addAsset(myToken);
 
-await ws.dropAsset(200 as AssetId);
+await eth.assets.update(pepe.id, { displayStatus: false });
+await eth.assets.drop(pepe.id);
 
 const found  = await ws.filter("USDC", "Asset");
 const byAddr = await ws.filter("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "Asset");

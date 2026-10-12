@@ -2,6 +2,17 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.7] — 2026-10-12
+
+Lets you add, edit, reorder and remove a network's tokens, and save the changes.
+
+### Added
+- A network's tokens are now an editable list — `network.assets` — with `add`, `update`, `drop`, `move` and `byId`.
+- Edit a token with `workspace.updateAsset(id, changes)` or `asset.save()`, and add one from its details with `workspace.addAsset(...)`; new types `AssetAddInit`, `AssetUpdate` and `NetworkAssetCollection`.
+
+### Changed
+- A built-in token may change only its display settings and cannot be removed; a user-added token may change every detail and be removed, and a token's id, contract address and network never change. `workspace.addAsset(asset)`, `workspace.dropAsset` and `workspace.moveAsset` are deprecated in favour of a network's token list.
+
 ## [2.5.6] — 2026-10-11
 
 Adds the Ink network and a portable, password-protected backup of an account's seed phrase, and tightens the rules for account and network names.
