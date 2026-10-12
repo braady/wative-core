@@ -6,7 +6,7 @@ const { mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-const { Workspace, Network, Asset } = require("wative-core");
+const { Workspace, Network } = require("wative-core");
 
 const MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -70,19 +70,19 @@ test("persistence — custom user asset round-trips", async () => {
   const root = mkdtempSync(join(tmpdir(), "wative-persist-asset-"));
   let ws = await Workspace.open({ path: root, password: "wsp-pwd" });
 
-  await ws.addAsset(new Asset({
-    id: 250,
+  const added = await ws.addAsset({
+    network: Network.Ethereum,
     symbol: "PEPE",
     name: "Pepe",
     decimals: 18,
     contractAddress: "0x6982508145454Ce325dDbE47a25d4ec3d2311933",
-    network: Network.Ethereum,
-  }));
+  });
+  const id = added.id;
 
   await ws.lock();
   ws = await Workspace.open({ path: root, password: "wsp-pwd" });
   const ethAssets = await ws.assets(Network.Ethereum);
-  const pepe = ethAssets.find((a) => a.id === 250);
+  const pepe = ethAssets.find((a) => a.id === id);
   assert.ok(pepe);
   assert.strictEqual(pepe.symbol, "PEPE");
   assert.strictEqual(pepe.decimals, 18);
