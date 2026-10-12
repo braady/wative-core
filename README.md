@@ -95,6 +95,7 @@ which is indistinguishable from a Solana *public* key.
 | Those two addresses     | independent keys, two paths   | **one key, both curves**        |
 | `dumpMnemonic()`       | ✔                             | throws `UNSUPPORTED_OP`         |
 | `sliceWallets(n)`      | ✔                             | throws `UNSUPPORTED_OP`         |
+| `wallet.drop()`        | throws `UNSUPPORTED_OP`       | ✔                               |
 | `importPrivateKey()`   | throws `UNSUPPORTED_OP`       | ✔                               |
 
 ```ts
@@ -138,6 +139,7 @@ const ws = await Workspace.open({ password: "your-workspace-password" });
 const account = await ws.accounts.create(
   "Trading Desk",
   "your-workspace-password",
+  // Published BIP-39 test vector — swept constantly. Call newMnemonic() for a real wallet.
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
 );
 
@@ -162,6 +164,7 @@ const ws = await Workspace.open({ provider, password: "your-workspace-password" 
 const account = await ws.accounts.create(
   "Trading Desk",
   "your-workspace-password",
+  // Published BIP-39 test vector — swept constantly. Call newMnemonic() for a real wallet.
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
 );
 
@@ -318,18 +321,19 @@ The library is organized around seven things you'll work with:
 - **`Account`** — either an HD account (one BIP-39 mnemonic, can derive many wallets) or a PK account (raw private keys you import one at a time). Each account can have its own password or share the workspace password.
 - **`Wallet`** — a unit inside an account, holding one address per `(vm, network)`. Both kinds give you an EVM and a Solana address: an HD slot derives one per chain from the mnemonic, an import derives its sibling from the imported key. Treat `wallet.addresses` as the list it is.
 - **`Address`** — an on-chain identity. Sign messages, build transactions, transfer native coins or tokens, and send them.
-- **`Network`** — chain metadata. 14 networks ship pre-loaded.
-- **`Asset`** — token metadata. 29 tokens ship pre-loaded.
+- **`Network`** — chain metadata. 15 networks ship pre-loaded.
+- **`Asset`** — token metadata. 32 tokens ship pre-loaded.
 - **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`). Tracking stops at first inclusion, so `whenConfirmed(n)` with `n > 1` rejects `UNSUPPORTED_OP` — call it with no argument and poll `receipt.blockNumber` against the chain head if you need depth — and `whenFinalized()` rejects `UNSUPPORTED_OP` unless the node reported finality directly.
 
 Everything is encrypted on disk under your workspace password.
 
 ### Pre-loaded networks and tokens
 
-| Networks (14) | Tokens (29) |
+| Networks (15) | Tokens (32) |
 |---|---|
 | ethereum, base, bnbchain, arbitrum, optimism | native gas + USDC + USDT on each EVM mainnet (BSC versions are 18-decimal Binance-Peg); plus WETH on ethereum |
 | hyperevm, robinhood | native HYPE on HyperEVM; native ETH on Robinhood Chain |
+| ink | native ETH + USDC + USDT0 |
 | sepolia, arbitrum-sepolia | native ETH on both testnets; plus USDC on arbitrum-sepolia |
 | hyperevm-testnet, robinhood-testnet | native HYPE / native ETH, mirroring their mainnets |
 | solana, solana-testnet, solana-devnet | native SOL + USDC + USDT + WSOL on solana mainnet; native-only on testnets |
@@ -409,6 +413,7 @@ If you'd rather not rely on the resolver, just pass the path explicitly — it s
 const hd = await ws.accounts.create(
   "Trading Desk",
   "wsp-pwd",
+  // Published BIP-39 test vector — swept constantly. Call newMnemonic() for a real wallet.
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
 );
 await hd.deriveWallets(10);
@@ -417,6 +422,7 @@ await hd.sliceWallets(6);
 const pk = await ws.accounts.create(
   "External Hot Wallet",
   "wsp-pwd",
+  // Published test key (Ganache account #0) — never hold funds on it.
   "0x4f3edf983ac636a65a842ce7c78d9aa706d3b113bce9c46f30d7d21715b23b1d",
   undefined,
   { kind: "PK" },
@@ -429,6 +435,7 @@ await pk.importPrivateKey(
 const sub = await ws.accounts.create(
   "Sub Account",
   "sub-pwd",
+  // Published BIP-39 test vector — swept constantly. Call newMnemonic() for a real wallet.
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
   undefined,
   { hasOwnPassword: true },
@@ -436,7 +443,8 @@ const sub = await ws.accounts.create(
 await sub.tryUnlock("sub-pwd");
 await sub.resetPassword("sub-pwd", "new-sub-pwd");
 
-console.log(hd.dumpMnemonic());
+// Returns the seed phrase in the clear — whoever reads it controls every address.
+const phrase = hd.dumpMnemonic();
 
 hd.lock();
 await pk.drop();
@@ -452,8 +460,38 @@ console.log(wallet.addresses.length);
 await wallet.addTag("hot");
 await wallet.addTag("alpha-strategy");
 
-await hd.wallets.drop(hd.wallets[10]);
+await hd.sliceWallets(10);                        // HD removes a tail; wallet.drop() is PK-only
 ```
+
+### Handling the seed phrase
+
+> ⚠️ **A seed phrase is the account.** It derives every private key on every
+> chain, now and for every wallet derived later, and it is not revocable: there
+> is no way to retire a phrase that leaked.
+>
+> `newMnemonic()` mints one, `dumpMnemonic()` reads one back out of an unlocked
+> HD account, and `sealMnemonic()` / `openMnemonic()` store one encrypted under
+> the workspace password for backup. All four hand you plaintext words.
+>
+> - **Do not log it, print it, or put it in an error.** `console.log(phrase)`
+>   reaches CI logs, container log aggregation, terminal scrollback and crash
+>   reporters. The library makes a best-effort attempt to keep a phrase out of
+>   its own log output; treat that as a backstop, not a guarantee, and do not
+>   rely on it for anything you print yourself.
+> - **Do not pass it as `displayName`.** That argument is stored in the clear
+>   and becomes part of an on-disk filename. A complete, valid phrase there is
+>   refused — a partial one is not, so keep the argument order in mind:
+>   `create(displayName, password, secret)`.
+> - **A phrase restores anywhere.** The derivation paths are the standard ones
+>   (`m/44'/60'/0'/0/i` for EVM, `m/44'/501'/i'/0'` for SVM), so the same words
+>   reproduce the same addresses in this library and in other wallets.
+> - **Mint it, do not copy it.** `newMnemonic()` draws from the platform CSPRNG.
+>   Every phrase printed in this document is a published test vector whose
+>   addresses are swept within seconds of being funded; a phrase from a web page,
+>   a screenshot or an example is already someone else's.
+> - **Clear it when you are done with it.** JavaScript strings cannot be wiped,
+>   so drop the reference and prefer `lock()`; for forensic-grade cleanup,
+>   restart the process.
 
 ### Address — sign messages, build transactions
 
