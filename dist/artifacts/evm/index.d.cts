@@ -1,5 +1,5 @@
-import { C as Contract } from '../../evm-hYUvjm9n.cjs';
-import '../../workspace-g-1DGOHJ.cjs';
+import { C as Contract } from '../../evm-CUET-BZi.cjs';
+import '../../workspace-Bln1maQ9.cjs';
 
 declare const ERC20: Contract;
 

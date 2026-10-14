@@ -2,6 +2,17 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.8] — 2026-10-14
+
+Adds VM-agnostic wallet accessors and a built-in network's canonical RPC URL, and removes the unimplemented Sui placeholder.
+
+### Added
+- `wallet.vm` and `wallet.address` read a wallet without naming a chain: `wallet.vm` is the virtual machine of the account's default network, and `wallet.address` is that wallet's address for it. Changing the account's default network moves both. `wallet.address` is `null` when the wallet has no address for that chain. `wallet.evm` / `wallet.svm` remain for explicit per-chain access.
+- `network.defaultRpcUrl` is a built-in network's canonical RPC URL — the value an overridden built-in resets back to. A custom network has none and reports `UNSUPPORTED_OP`.
+
+### Removed
+- BREAKING: the unimplemented Sui placeholder is gone. A network's VM is now `evm` or `svm` only, and the `wallet.sui` accessor is removed. Register a chain the library does not ship with `registerDialect`.
+
 ## [2.5.7] — 2026-10-12
 
 Lets you add, edit, reorder and remove a network's tokens, and save the changes.

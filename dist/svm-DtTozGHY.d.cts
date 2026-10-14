@@ -1,4 +1,4 @@
-import { c as Address, a8 as SvmTxBuildParams, a7 as SvmTransaction, N as Network, a5 as SvmAddressLookupTable } from './workspace-g-1DGOHJ.js';
+import { c as Address, a8 as SvmTxBuildParams, a7 as SvmTransaction, N as Network, a5 as SvmAddressLookupTable } from './workspace-Bln1maQ9.cjs';
 
 declare function svmResolveAddressLookupTables(network: Network, addresses: readonly string[]): Promise<SvmAddressLookupTable[]>;
 interface SvmInstruction {
