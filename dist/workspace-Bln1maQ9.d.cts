@@ -121,6 +121,8 @@ declare class Network {
     
     get symbol(): string;
     
+    get defaultRpcUrl(): string;
+    
     get assets(): NetworkAssetCollection;
     
     save(): Promise<void>;
@@ -169,10 +171,9 @@ type Brand<T, B extends string> = T & {
 type Slug = Brand<string, "Slug">;
 type EvmAddress = Brand<string, "EvmAddress">;
 type SvmAddress = Brand<string, "SvmAddress">;
-type SuiAddress = Brand<string, "SuiAddress">;
 type ChainId = Brand<number, "ChainId">;
 type AssetId = Brand<number, "AssetId">;
-type ChainVM = "evm" | "svm" | "sui";
+type ChainVM = "evm" | "svm";
 type VmToken = ChainVM | (string & {});
 
 type NetworkLike = Network | ChainId | string;
@@ -678,7 +679,7 @@ declare class SvmTransaction implements Transaction {
 }
 
 interface AddressInit {
-    publicKey: EvmAddress | SvmAddress | SuiAddress;
+    publicKey: EvmAddress | SvmAddress;
     vm: VmToken;
     network: Network;
     ciphertext: string;
@@ -722,7 +723,7 @@ interface SignRawOptions {
 }
 declare class Address {
     #private;
-    readonly publicKey: EvmAddress | SvmAddress | SuiAddress;
+    readonly publicKey: EvmAddress | SvmAddress;
     readonly vm: VmToken;
     readonly network: Network;
     readonly assets: AssetCollection;
@@ -811,7 +812,10 @@ declare class Wallet {
     _setAddresses(addresses: Address[]): void;
     get evm(): EvmSigner | null;
     get svm(): SvmSigner | null;
-    get sui(): Address | null;
+    
+    get vm(): VmToken;
+    
+    get address(): Address | null;
     
     toJson(): ReadonlyArray<{
         vm: VmToken;
@@ -949,6 +953,8 @@ declare class Account {
     _dropWallet(wallet: Wallet): Promise<void>;
     
     _enqueueMutation<T>(fn: () => Promise<T>): Promise<T>;
+    
+    _resolveNetworkForVm(vm: VmToken, explicit?: NetworkLike): Network;
     
     _restoreUnlockPassword(pwd: string | null): void;
     
@@ -1123,4 +1129,4 @@ declare class Workspace {
     }>;
 }
 
-export { type SignInResult as $, Account as A, EvmTxType as B, type ChainId as C, type DecodedTx as D, type EvmAddress as E, type LogRecord as F, type LogSink as G, Logger as H, type LoggerConfig as I, type NetworkAssetCollection as J, type NetworkCollection as K, type LogLevel as L, type NetworkInit as M, Network as N, type NetworkLike as O, type NetworkRoutes as P, type NormalizedTx as Q, type OpenOptions as R, Provider as S, type RawTx as T, Record$1 as U, type RecordInit as V, type RecordType as W, type SendOptions as X, type SendRoute as Y, type Settling as Z, type SignInParams as _, type AccountCollection as a, type SignRawOptions as a0, type SimulationResult as a1, type SinkConfig as a2, type Slug as a3, type SvmAddress as a4, type SvmAddressLookupTable as a5, SvmSigner as a6, SvmTransaction as a7, type SvmTxBuildParams as a8, type Transaction as a9, type TransactionReceipt as aa, type TransactionStateChange as ab, type TransactionStatus as ac, type TransactionTracker as ad, type TransferPayload as ae, type TransferRequest as af, type VmToken as ag, Wallet as ah, type WalletCollection as ai, WativeError as aj, type WativeErrorCode as ak, type WativeErrorOpts as al, Workspace as am, type WorkspaceConfig as an, deserializeEvmTx as ao, deserializeSvmTx as ap, deserializeTx as aq, isRawTx as ar, newMnemonic as as, normalizeTxInput as at, type SuiAddress as au, type AccountOrgType as b, Address as c, Asset as d, type AssetAddInit as e, type AssetBalance as f, type AssetCollection as g, type AssetId as h, type AssetInitObject as i, type AssetRef as j, type AssetUpdate as k, type ChainVM as l, type Commitment as m, ConsoleSink as n, type ContainerState as o, type DestinationCode as p, type DestinationGuardOptions as q, type DestinationReport as r, type DestinationScreenResult as s, type DestinationScreener as t, type DestinationSeverity as u, type DestinationWarning as v, type EvmRawTx as w, EvmSigner as x, EvmTransaction as y, type EvmTxBuildParams as z };
+export { type SignInResult as $, Account as A, EvmTxType as B, type ChainId as C, type DecodedTx as D, type EvmAddress as E, type LogRecord as F, type LogSink as G, Logger as H, type LoggerConfig as I, type NetworkAssetCollection as J, type NetworkCollection as K, type LogLevel as L, type NetworkInit as M, Network as N, type NetworkLike as O, type NetworkRoutes as P, type NormalizedTx as Q, type OpenOptions as R, Provider as S, type RawTx as T, Record$1 as U, type RecordInit as V, type RecordType as W, type SendOptions as X, type SendRoute as Y, type Settling as Z, type SignInParams as _, type AccountCollection as a, type SignRawOptions as a0, type SimulationResult as a1, type SinkConfig as a2, type Slug as a3, type SvmAddress as a4, type SvmAddressLookupTable as a5, SvmSigner as a6, SvmTransaction as a7, type SvmTxBuildParams as a8, type Transaction as a9, type TransactionReceipt as aa, type TransactionStateChange as ab, type TransactionStatus as ac, type TransactionTracker as ad, type TransferPayload as ae, type TransferRequest as af, type VmToken as ag, Wallet as ah, type WalletCollection as ai, WativeError as aj, type WativeErrorCode as ak, type WativeErrorOpts as al, Workspace as am, type WorkspaceConfig as an, deserializeEvmTx as ao, deserializeSvmTx as ap, deserializeTx as aq, isRawTx as ar, newMnemonic as as, normalizeTxInput as at, type AccountOrgType as b, Address as c, Asset as d, type AssetAddInit as e, type AssetBalance as f, type AssetCollection as g, type AssetId as h, type AssetInitObject as i, type AssetRef as j, type AssetUpdate as k, type ChainVM as l, type Commitment as m, ConsoleSink as n, type ContainerState as o, type DestinationCode as p, type DestinationGuardOptions as q, type DestinationReport as r, type DestinationScreenResult as s, type DestinationScreener as t, type DestinationSeverity as u, type DestinationWarning as v, type EvmRawTx as w, EvmSigner as x, EvmTransaction as y, type EvmTxBuildParams as z };

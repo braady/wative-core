@@ -71,6 +71,11 @@ refuses the same identity twice, on either chain.
 > ```ts
 > const evm = wallet.addresses.find((a) => a.vm === "evm");
 > ```
+>
+> For the common case — a wallet's address on the account's **default network** —
+> skip the branch and read `wallet.vm` / `wallet.address`: `wallet.vm` is the
+> default network's chain and `wallet.address` is this wallet's address for it
+> (`null` if it has none). `wallet.evm` / `wallet.svm` stay for a named chain.
 
 **Which chain a key is for is read off the key** — `vm` is optional:
 
@@ -321,7 +326,7 @@ The library is organized around seven things you'll work with:
 - **`Account`** — either an HD account (one BIP-39 mnemonic, can derive many wallets) or a PK account (raw private keys you import one at a time). Each account can have its own password or share the workspace password.
 - **`Wallet`** — a unit inside an account, holding one address per `(vm, network)`. Both kinds give you an EVM and a Solana address: an HD slot derives one per chain from the mnemonic, an import derives its sibling from the imported key. Treat `wallet.addresses` as the list it is.
 - **`Address`** — an on-chain identity. Sign messages, build transactions, transfer native coins or tokens, and send them.
-- **`Network`** — chain metadata. 15 networks ship pre-loaded.
+- **`Network`** — chain metadata. 15 networks ship pre-loaded. A built-in network's `defaultRpcUrl` is its canonical endpoint — what a customized `rpcUrl` resets back to.
 - **`Asset`** — token metadata. 32 tokens ship pre-loaded.
 - **`Transaction`** — `EvmTransaction` or `SvmTransaction`. Subscribe to lifecycle events (`change` / `confirmed` / `failed`) or await terminal states (`whenSubmitted` / `whenMined` / `whenConfirmed` / `whenFinalized`). Tracking stops at first inclusion, so `whenConfirmed(n)` with `n > 1` rejects `UNSUPPORTED_OP` — call it with no argument and poll `receipt.blockNumber` against the chain head if you need depth — and `whenFinalized()` rejects `UNSUPPORTED_OP` unless the node reported finality directly.
 
