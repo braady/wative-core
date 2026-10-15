@@ -285,6 +285,40 @@ It is the Node default where `@node-rs/argon2` is installed, and Node-only: that
 package has no browser build. Construct it yourself only to pick a location, or
 to be sure you get it rather than the fallback.
 
+### One derivation per container in the browser: `IdbProviderV3`
+
+```ts
+import { Workspace, IdbProviderV3 } from "wative-core";
+
+const provider = await IdbProviderV3.create("my-dapp");
+const ws = await Workspace.open({ provider, password });
+```
+
+`IdbProviderV3` is the browser counterpart of `HybridProviderV3`: unlocking stays
+just as fast whether a workspace holds a few accounts or many, with no native
+binary. It is opt-in — the default `IdbProvider` is unchanged, so construct
+`IdbProviderV3` yourself to use it, and its `create` takes the same options. A
+workspace it writes cannot be opened by older versions of this library.
+
+### Resuming an unlocked workspace without the password
+
+A workspace on a v3 provider (`IdbProviderV3` or `HybridProviderV3`) can hand out
+a 32-byte **session key** that reopens it later without the password — for
+example to restore an unlocked session after a browser extension's background
+page is evicted:
+
+```ts
+const key = ws.exportSessionKey();        // 32 bytes — keep it somewhere memory-only
+// ...later, with no password available...
+const ws2 = await Workspace.openWithSessionKey(provider, key);
+// or, to resume a workspace handle you still hold: await ws.unlockWithSessionKey(key);
+```
+
+The session key opens the same records the password does, so guard it as
+carefully as the workspace itself. A wrong key leaves the workspace locked, an
+account with its own password still needs that password, and a v2 provider
+(`IdbProvider`) has no such key — `exportSessionKey()` reports `UNSUPPORTED_OP`.
+
 ### Checking which implementation ran
 
 ```ts

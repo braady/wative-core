@@ -1,4 +1,4 @@
-import { S as Provider, a3 as Slug, o as ContainerState, W as RecordType, U as Record } from './workspace-BoiTRV1J.cjs';
+import { S as Provider, a3 as Slug, o as ContainerState, W as RecordType, U as Record } from './workspace-6QjtW8-d.js';
 
 interface ContainerEntry {
     readonly key: string;
@@ -17,6 +17,8 @@ declare abstract class ContainerProvider extends Provider {
     protected _prepareUnlock(): Promise<void>;
     
     unlockContainer(password: string): Promise<boolean>;
+    
+    unlockContainerWithKey(key: Uint8Array): Promise<boolean>;
     
     initialize(): Promise<void>;
     

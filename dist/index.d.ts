@@ -1,9 +1,9 @@
-import { a3 as Slug, S as Provider, W as RecordType, U as Record$1, N as Network, a5 as SvmAddressLookupTable, T as RawTx, E as EvmAddress, a1 as SimulationResult, q as DestinationGuardOptions, r as DestinationReport, Y as SendRoute, a4 as SvmAddress, ag as VmToken, g as AssetCollection, z as EvmTxBuildParams, a8 as SvmTxBuildParams, a9 as Transaction, af as TransferRequest, ae as TransferPayload, l as ChainVM } from './workspace-BoiTRV1J.js';
-export { A as Account, a as AccountCollection, b as AccountOrgType, c as Address, d as Asset, e as AssetAddInit, f as AssetBalance, h as AssetId, i as AssetInitObject, j as AssetRef, k as AssetUpdate, C as ChainId, m as Commitment, n as ConsoleSink, o as ContainerState, D as DecodedTx, p as DestinationCode, s as DestinationScreenResult, t as DestinationScreener, u as DestinationSeverity, v as DestinationWarning, w as EvmRawTx, x as EvmSigner, y as EvmTransaction, B as EvmTxType, L as LogLevel, F as LogRecord, G as LogSink, H as Logger, I as LoggerConfig, J as NetworkAssetCollection, K as NetworkCollection, M as NetworkInit, O as NetworkLike, P as NetworkRoutes, Q as NormalizedTx, R as OpenOptions, V as RecordInit, X as SendOptions, Z as Settling, _ as SignInParams, $ as SignInResult, a0 as SignRawOptions, a2 as SinkConfig, a6 as SvmSigner, a7 as SvmTransaction, aa as TransactionReceipt, ab as TransactionStateChange, ac as TransactionStatus, ad as TransactionTracker, ah as Wallet, ai as WalletCollection, aj as WativeError, ak as WativeErrorCode, al as WativeErrorOpts, am as Workspace, an as WorkspaceConfig, ao as deserializeEvmTx, ap as deserializeSvmTx, aq as deserializeTx, ar as isRawTx, as as newMnemonic, at as normalizeTxInput } from './workspace-BoiTRV1J.js';
-import { a as ContainerProvider } from './container-provider-Da9jn2NY.js';
-export { C as ContainerEntry } from './container-provider-Da9jn2NY.js';
-export { A as AbiItem, C as Contract } from './evm-B3-ujBFb.js';
-export { P as Program, S as SvmInstruction, s as svmResolveAddressLookupTables } from './svm-DnKdq2PX.js';
+import { a3 as Slug, S as Provider, W as RecordType, U as Record$1, N as Network, a5 as SvmAddressLookupTable, T as RawTx, E as EvmAddress, a1 as SimulationResult, q as DestinationGuardOptions, r as DestinationReport, Y as SendRoute, a4 as SvmAddress, ag as VmToken, g as AssetCollection, z as EvmTxBuildParams, a8 as SvmTxBuildParams, a9 as Transaction, af as TransferRequest, ae as TransferPayload, l as ChainVM } from './workspace-6QjtW8-d.js';
+export { A as Account, a as AccountCollection, b as AccountOrgType, c as Address, d as Asset, e as AssetAddInit, f as AssetBalance, h as AssetId, i as AssetInitObject, j as AssetRef, k as AssetUpdate, C as ChainId, m as Commitment, n as ConsoleSink, o as ContainerState, D as DecodedTx, p as DestinationCode, s as DestinationScreenResult, t as DestinationScreener, u as DestinationSeverity, v as DestinationWarning, w as EvmRawTx, x as EvmSigner, y as EvmTransaction, B as EvmTxType, L as LogLevel, F as LogRecord, G as LogSink, H as Logger, I as LoggerConfig, J as NetworkAssetCollection, K as NetworkCollection, M as NetworkInit, O as NetworkLike, P as NetworkRoutes, Q as NormalizedTx, R as OpenOptions, V as RecordInit, X as SendOptions, Z as Settling, _ as SignInParams, $ as SignInResult, a0 as SignRawOptions, a2 as SinkConfig, a6 as SvmSigner, a7 as SvmTransaction, aa as TransactionReceipt, ab as TransactionStateChange, ac as TransactionStatus, ad as TransactionTracker, ah as Wallet, ai as WalletCollection, aj as WativeError, ak as WativeErrorCode, al as WativeErrorOpts, am as Workspace, an as WorkspaceConfig, ao as deserializeEvmTx, ap as deserializeSvmTx, aq as deserializeTx, ar as isRawTx, as as newMnemonic, at as normalizeTxInput } from './workspace-6QjtW8-d.js';
+import { a as ContainerProvider } from './container-provider-BuVq3kOa.js';
+export { C as ContainerEntry } from './container-provider-BuVq3kOa.js';
+export { A as AbiItem, C as Contract } from './evm-wMtjUQSC.js';
+export { P as Program, S as SvmInstruction, s as svmResolveAddressLookupTables } from './svm-BhqoDJ_W.js';
 
 interface Argon2BackendParams {
     t: number;
@@ -58,7 +58,7 @@ declare class IdbProvider extends ContainerProvider {
     readonly durability: StorageDurability;
     
     readonly quota: StorageQuota;
-    private constructor();
+    protected constructor(databaseName: string, db: IDBDatabase, durability: StorageDurability, quota: StorageQuota, acknowledged: boolean);
     
     static create(databaseName: string, opts?: IdbProviderOptions): Promise<IdbProvider>;
     
@@ -78,6 +78,11 @@ declare class IdbProvider extends ContainerProvider {
     close(): Promise<void>;
     
     static destroy(databaseName: string, opts?: IdbDestroyOptions): Promise<void>;
+}
+
+declare class IdbProviderV3 extends IdbProvider {
+    
+    static create(databaseName: string, opts?: IdbProviderOptions): Promise<IdbProviderV3>;
 }
 
 declare class FileProvider extends Provider {
@@ -347,4 +352,4 @@ interface AssetInit {
 }
 declare const BUILTIN_ASSETS: Record<string, ReadonlyArray<AssetInit>>;
 
-export { AesGcmCipher, type AesGcmCipherOptions, type Argon2Backend, type Argon2BackendInfo, type Argon2BackendParams, Argon2Kdf, type Argon2KdfOptions, AssetCollection, type AssetInit, BUILTIN_ASSETS, BUILTIN_NETWORKS, ChainClient, type ChainClientBroadcastOpts, type ChainClientOpts, type ChainClientSimulateOpts, type ChainCtx, ChainDialect, ChainVM, Cipher, ContainerProvider, type CurveName, DbProvider, DestinationGuardOptions, DestinationReport, type DigestSigner, EvmAddress, EvmTxBuildParams, FileProvider, type IdbDestroyOptions, IdbProvider, type IdbProviderOptions, type MessageEncoding, Network, type NetworkConfig, type PasswordCheckContext, type PasswordCheckResult, PasswordPolicy, type PasswordPolicyOptions, PasswordScore, type PasswordWeakness, type PasswordWeaknessCode, Provider, RawTx, Record$1 as Record, RecordType, type RecoveredSecpSig, type RecoveryEnvelope, SendRoute, SimulationResult, Slug, type StorageDurability, type StorageQuota, SvmAddress, SvmAddressLookupTable, SvmTxBuildParams, Transaction, TransferPayload, TransferRequest, VmToken, argon2BackendInfo, closeAllRpcClients, openMnemonic, registerDialect, sealMnemonic };
+export { AesGcmCipher, type AesGcmCipherOptions, type Argon2Backend, type Argon2BackendInfo, type Argon2BackendParams, Argon2Kdf, type Argon2KdfOptions, AssetCollection, type AssetInit, BUILTIN_ASSETS, BUILTIN_NETWORKS, ChainClient, type ChainClientBroadcastOpts, type ChainClientOpts, type ChainClientSimulateOpts, type ChainCtx, ChainDialect, ChainVM, Cipher, ContainerProvider, type CurveName, DbProvider, DestinationGuardOptions, DestinationReport, type DigestSigner, EvmAddress, EvmTxBuildParams, FileProvider, type IdbDestroyOptions, IdbProvider, type IdbProviderOptions, IdbProviderV3, type MessageEncoding, Network, type NetworkConfig, type PasswordCheckContext, type PasswordCheckResult, PasswordPolicy, type PasswordPolicyOptions, PasswordScore, type PasswordWeakness, type PasswordWeaknessCode, Provider, RawTx, Record$1 as Record, RecordType, type RecoveredSecpSig, type RecoveryEnvelope, SendRoute, SimulationResult, Slug, type StorageDurability, type StorageQuota, SvmAddress, SvmAddressLookupTable, SvmTxBuildParams, Transaction, TransferPayload, TransferRequest, VmToken, argon2BackendInfo, closeAllRpcClients, openMnemonic, registerDialect, sealMnemonic };

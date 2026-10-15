@@ -1087,13 +1087,25 @@ declare class Workspace {
     get rootDescriptor(): string;
     
     static open(providerOrRoot?: Provider | string | OpenOptions, password?: string, create?: boolean): Promise<Workspace>;
+    
+    static openWithSessionKey(provider: Provider, key: Uint8Array): Promise<Workspace>;
     unlock(password: string): Promise<this>;
+    
+    unlockWithSessionKey(key: Uint8Array): Promise<this>;
     
     lock(): Promise<void>;
     
     close(): Promise<void>;
     
     _getPassword(): string;
+    
+    _sessionCredential(): {
+        password: string;
+    } | {
+        kek: Uint8Array;
+    };
+    
+    exportSessionKey(): Uint8Array;
     get config(): WorkspaceConfig;
     getConfig(): Promise<WorkspaceConfig>;
     setBusinessTimezone(timezone: string): Promise<void>;
