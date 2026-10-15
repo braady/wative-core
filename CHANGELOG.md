@@ -2,6 +2,15 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] — 2026-10-15
+
+Adds an opt-in browser storage provider whose unlock speed does not grow with the number of stored accounts, and a session key that reopens an unlocked workspace without the password.
+
+### Added
+- `IdbProviderV3` is an opt-in browser storage provider whose unlock stays just as fast whether a workspace holds a few accounts or many. `IdbProvider` is unchanged; create the new one the same way, with `IdbProviderV3.create(name)`. A workspace it writes cannot be opened by older versions of the library.
+- `workspace.exportSessionKey()` returns a 32-byte session key for an unlocked workspace on a v3 provider (`IdbProviderV3` or `HybridProviderV3`); a v2 workspace has no such key and reports `UNSUPPORTED_OP`.
+- `Workspace.openWithSessionKey(provider, key)` and `workspace.unlockWithSessionKey(key)` reopen or unlock a workspace from that key alone, without the password. A wrong key leaves the workspace locked, and an account with its own password still needs that password.
+
 ## [2.5.9] — 2026-10-14
 
 Adds `isBuiltin` on networks and tokens, keeps built-ins in step with the library, adds an SPL token-transfer shortcut and frozen / non-transferable destination warnings, and removes two balance-refresh forms that were never implemented.

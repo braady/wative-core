@@ -136,7 +136,7 @@ test("every type named by a public signature is exported from every artifact tha
 
 test("bare-name require() exposes the documented entry points", () => {
   const core = require("wative-core");
-  for (const name of ["Workspace", "Network", "Asset", "Provider", "WativeError"]) {
+  for (const name of ["Workspace", "Network", "Asset", "Provider", "WativeError", "IdbProviderV3"]) {
     assert.ok(core[name], `wative-core should export ${name}`);
   }
   const evm = require("wative-core/artifacts/evm");
