@@ -39,6 +39,8 @@ declare class Asset {
     constructor(init: AssetInitObject);
     constructor(id: AssetId, symbol: string, name: string, decimals: number, network: Network, contractAddress?: string | null);
     
+    get isBuiltin(): boolean;
+    
     save(): Promise<Asset>;
 }
 interface AssetBalance {
@@ -122,6 +124,8 @@ declare class Network {
     get symbol(): string;
     
     get defaultRpcUrl(): string;
+    
+    get isBuiltin(): boolean;
     
     get assets(): NetworkAssetCollection;
     
@@ -783,8 +787,6 @@ declare class Address {
         rpcUrl?: string;
     }): Promise<SimulationResult>;
     refreshBalances(displayedOnly?: boolean): Settling<readonly AssetBalance[]>;
-    refreshBalances(network: NetworkLike, displayedOnly?: boolean): Settling<readonly AssetBalance[]>;
-    refreshBalances(assetId: AssetId): Settling<AssetBalance>;
     readonly _wallet: Wallet;
 }
 declare class EvmSigner extends Address {
