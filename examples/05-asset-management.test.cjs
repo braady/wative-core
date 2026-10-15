@@ -144,7 +144,9 @@ test("asset — two-tier edits: a user token edits all metadata, a built-in only
   assert.strictEqual(updated.decimals, 8);
   assert.strictEqual(updated.displayStatus, false);
 
+  assert.strictEqual(mine.isBuiltin, false);
   const usdc = eth.assets.find((a) => a.symbol === "USDC");
+  assert.strictEqual(usdc.isBuiltin, true);
   const builtinEdited = await ws.updateAsset(usdc.id, { displayStatus: false });
   assert.strictEqual(builtinEdited.displayStatus, false);
   await assert.rejects(ws.updateAsset(usdc.id, { symbol: "USDX" }), (err) => err.code === "PARAMETER_ERROR");

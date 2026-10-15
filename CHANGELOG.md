@@ -2,6 +2,24 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.9] — 2026-10-14
+
+Adds `isBuiltin` on networks and tokens, keeps built-ins in step with the library, adds an SPL token-transfer shortcut and frozen / non-transferable destination warnings, and removes two balance-refresh forms that were never implemented.
+
+### Added
+- `network.isBuiltin` and `asset.isBuiltin` tell you whether a network or token ships with the library. A built-in cannot be removed and limits which fields you may edit — a network's connectivity and labels, a token's display settings.
+- `buildTransaction({ tokenMint })` builds a Solana SPL token transfer — the same transfer `buildTransferPayload` produces — without hand-built instructions; `tokenProgram` picks classic SPL or Token-2022.
+- `checkDestination` warns when an SPL recipient's token account is frozen or the token's mint is non-transferable, so you can tell before sending that the transfer would be rejected on-chain (codes `SVM_FROZEN_TOKEN_ACCOUNT`, `SVM_NON_TRANSFERABLE`).
+
+### Changed
+- Built-in networks and tokens stay in step with the library: ones added in a later release show up automatically in workspaces created earlier, and a built-in's details always match the library — your own changes to it (a network's RPC URL, a token's display settings) are kept.
+
+### Fixed
+- A built-in network that first appears in a workspace created before it existed now includes its built-in tokens; previously it showed no balances.
+
+### Removed
+- `address.refreshBalances(network, …)` and `address.refreshBalances(assetId)` are gone — they were never implemented and always failed. `address.refreshBalances()` reads the balances on the address's own network.
+
 ## [2.5.8] — 2026-10-14
 
 Adds VM-agnostic wallet accessors and a built-in network's canonical RPC URL, and removes the unimplemented Sui placeholder.

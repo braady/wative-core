@@ -84,6 +84,9 @@ test("network — drop user network; pre-loaded networks reject drop", async () 
   });
   await ws.networks.add(custom);
 
+  assert.strictEqual(custom.isBuiltin, false);
+  assert.strictEqual(ws.networks.bySlug("ethereum").isBuiltin, true);
+
   await ws.networks.drop(custom);
   assert.strictEqual(ws.networks.bySlug("my-net"), null);
 

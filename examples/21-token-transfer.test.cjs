@@ -59,6 +59,19 @@ test("buildTransferPayload() —SVM SPL by mint prepends an idempotent recipient
   await ws.lock();
 });
 
+test("buildTransaction({ tokenMint }) —low-level SPL transfer convenience (SVM)", async () => {
+  const { ws, w0, w1 } = await twoWallets();
+  const tx = w0.svm.buildTransaction({
+    recipient: String(w1.svm.publicKey),
+    amount: 1_000_000n,
+    tokenMint: USDC_SVM_MINT,
+    recentBlockhash: "11111111111111111111111111111111",
+  });
+  assert.ok(tx);
+
+  await ws.lock();
+});
+
 test("buildTransferPayload() —by token symbol resolves to native vs token", async () => {
   const { ws, w0, w1 } = await twoWallets();
 
