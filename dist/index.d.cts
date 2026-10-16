@@ -1,9 +1,9 @@
-import { a3 as Slug, S as Provider, W as RecordType, U as Record$1, N as Network, a5 as SvmAddressLookupTable, T as RawTx, E as EvmAddress, a1 as SimulationResult, q as DestinationGuardOptions, r as DestinationReport, Y as SendRoute, a4 as SvmAddress, ag as VmToken, g as AssetCollection, z as EvmTxBuildParams, a8 as SvmTxBuildParams, a9 as Transaction, af as TransferRequest, ae as TransferPayload, l as ChainVM } from './workspace-6QjtW8-d.cjs';
-export { A as Account, a as AccountCollection, b as AccountOrgType, c as Address, d as Asset, e as AssetAddInit, f as AssetBalance, h as AssetId, i as AssetInitObject, j as AssetRef, k as AssetUpdate, C as ChainId, m as Commitment, n as ConsoleSink, o as ContainerState, D as DecodedTx, p as DestinationCode, s as DestinationScreenResult, t as DestinationScreener, u as DestinationSeverity, v as DestinationWarning, w as EvmRawTx, x as EvmSigner, y as EvmTransaction, B as EvmTxType, L as LogLevel, F as LogRecord, G as LogSink, H as Logger, I as LoggerConfig, J as NetworkAssetCollection, K as NetworkCollection, M as NetworkInit, O as NetworkLike, P as NetworkRoutes, Q as NormalizedTx, R as OpenOptions, V as RecordInit, X as SendOptions, Z as Settling, _ as SignInParams, $ as SignInResult, a0 as SignRawOptions, a2 as SinkConfig, a6 as SvmSigner, a7 as SvmTransaction, aa as TransactionReceipt, ab as TransactionStateChange, ac as TransactionStatus, ad as TransactionTracker, ah as Wallet, ai as WalletCollection, aj as WativeError, ak as WativeErrorCode, al as WativeErrorOpts, am as Workspace, an as WorkspaceConfig, ao as deserializeEvmTx, ap as deserializeSvmTx, aq as deserializeTx, ar as isRawTx, as as newMnemonic, at as normalizeTxInput } from './workspace-6QjtW8-d.cjs';
-import { a as ContainerProvider } from './container-provider-B2ltnbe9.cjs';
-export { C as ContainerEntry } from './container-provider-B2ltnbe9.cjs';
-export { A as AbiItem, C as Contract } from './evm-ORHtxt69.cjs';
-export { P as Program, S as SvmInstruction, s as svmResolveAddressLookupTables } from './svm-Dbt5MI7N.cjs';
+import { a4 as Slug, T as Provider, X as RecordType, V as Record$1, N as Network, a6 as SvmAddressLookupTable, U as RawTx, E as EvmAddress, a2 as SimulationResult, r as DestinationGuardOptions, s as DestinationReport, Z as SendRoute, a5 as SvmAddress, ah as VmToken, g as AssetCollection, B as EvmTxBuildParams, a9 as SvmTxBuildParams, aa as Transaction, ag as TransferRequest, af as TransferPayload, l as ChainVM } from './workspace-Cir5QPoM.cjs';
+export { A as Account, a as AccountCollection, b as AccountOrgType, c as Address, d as Asset, e as AssetAddInit, f as AssetBalance, h as AssetId, i as AssetInitObject, j as AssetRef, k as AssetUpdate, C as ChainId, m as Commitment, n as ConsoleSink, o as ContainerState, D as DecodedTx, p as DeriveWalletsOptions, q as DestinationCode, t as DestinationScreenResult, u as DestinationScreener, v as DestinationSeverity, w as DestinationWarning, x as EvmRawTx, y as EvmSigner, z as EvmTransaction, F as EvmTxType, L as LogLevel, G as LogRecord, H as LogSink, I as Logger, J as LoggerConfig, K as NetworkAssetCollection, M as NetworkCollection, O as NetworkInit, P as NetworkLike, Q as NetworkRoutes, R as NormalizedTx, S as OpenOptions, W as RecordInit, Y as SendOptions, _ as Settling, $ as SignInParams, a0 as SignInResult, a1 as SignRawOptions, a3 as SinkConfig, a7 as SvmSigner, a8 as SvmTransaction, ab as TransactionReceipt, ac as TransactionStateChange, ad as TransactionStatus, ae as TransactionTracker, ai as Wallet, aj as WalletCollection, ak as WativeError, al as WativeErrorCode, am as WativeErrorOpts, an as Workspace, ao as WorkspaceConfig, ap as deserializeEvmTx, aq as deserializeSvmTx, ar as deserializeTx, as as isRawTx, at as newMnemonic, au as normalizeTxInput } from './workspace-Cir5QPoM.cjs';
+import { a as ContainerProvider } from './container-provider-Dynh0nWx.cjs';
+export { C as ContainerEntry } from './container-provider-Dynh0nWx.cjs';
+export { A as AbiItem, C as Contract } from './evm-DLUzFEmP.cjs';
+export { P as Program, S as SvmInstruction, s as svmResolveAddressLookupTables } from './svm-CVf6A7Un.cjs';
 
 interface Argon2BackendParams {
     t: number;
@@ -339,6 +339,8 @@ interface NetworkConfig {
         readonly symbol: string;
         readonly decimals: number;
     };
+    
+    readonly multicallAddress?: string;
 }
 declare const BUILTIN_NETWORKS: Record<string, NetworkConfig>;
 interface AssetInit {

@@ -333,6 +333,24 @@ argon2BackendInfo();
 took. It is a pure read and resolves nothing, so before the first unlock it
 honestly answers `"unresolved"`.
 
+### Deriving many wallets without freezing the UI
+
+Add wallets in **one** call. `deriveWallets(N)` writes the account record once;
+pass `{ chunkSize, onProgress }` so a large derivation yields to the browser
+between chunks and can drive a progress bar:
+
+```ts
+await account.deriveWallets(400, {
+  chunkSize: 20,                              // yield to the UI every 20 wallets
+  onProgress: (done, total) => setBar(done / total),
+});
+```
+
+Without options it runs as one uninterrupted block — fine for a small count, or
+off the main thread. Either way the whole batch is a single write. Avoid looping
+`deriveWallets(1)` to add many wallets: each call rewrites the whole account
+record, so the cost grows super-linearly with the account's total wallet count.
+
 ## Runnable examples
 
 An `examples/` folder ships with the package — runnable JavaScript files demonstrating every domain's use cases. Read them top-to-bottom as walkthroughs, or run them as integration tests via Node's built-in test runner.
@@ -642,6 +660,8 @@ await hd.setDefaultNetwork(8453 as ChainId);
 await hd.setDefaultNetwork("0x2105");
 await hd.setDefaultNetwork(Network.Base);
 ```
+
+Every built-in EVM network ships with a Multicall3 contract. `network.multicallAddress` is the one in use and `network.defaultMulticallAddress` is the shipped default — set your own `multicallAddress` the same way as `rpcUrl` above, and reset by setting it back to `defaultMulticallAddress`. A custom network has no shipped default, so `defaultMulticallAddress` reports `UNSUPPORTED_OP`.
 
 ### Asset — pre-loaded tokens + custom tokens
 
