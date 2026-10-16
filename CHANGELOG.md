@@ -2,6 +2,17 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] — 2026-10-16
+
+Adds a progress option for deriving many wallets at once, a default multicall contract on every built-in EVM network that you can override, and fixes typed-data signing on a disabled wallet.
+
+### Added
+- `account.deriveWallets(count, { chunkSize, onProgress })` reports progress and keeps the UI responsive while deriving many wallets at once; with no options it behaves exactly as before.
+- Every built-in EVM network now ships a default multicall contract. `network.defaultMulticallAddress` is that default; set your own `network.multicallAddress` and reset to it, the same way as the RPC URL. A custom network has no default and reports `UNSUPPORTED_OP`.
+
+### Fixed
+- A disabled wallet now refuses to sign typed data (EIP-712) with `WALLET_DISABLED`, matching every other signing method.
+
 ## [2.6.0] — 2026-10-15
 
 Adds an opt-in browser storage provider whose unlock speed does not grow with the number of stored accounts, and a session key that reopens an unlocked workspace without the password.
