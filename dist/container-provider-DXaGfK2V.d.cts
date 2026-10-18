@@ -1,4 +1,4 @@
-import { T as Provider, a4 as Slug, o as ContainerState, X as RecordType, V as Record } from './workspace-Cir5QPoM.cjs';
+import { T as Provider, a4 as Slug, o as ContainerState, X as RecordType, V as Record } from './workspace-C_DNamEl.cjs';
 
 interface ContainerEntry {
     readonly key: string;

@@ -1,6 +1,6 @@
 {
   "name": "wative-core",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Hyperscale crypto wallet management library — multi-workspace, multi-chain, originally designed for on-chain market makers",
   "type": "module",
   "main": "./dist/index.node.cjs",
@@ -86,7 +86,8 @@
   "files": [
     "dist/",
     "CHANGELOG.md",
-    "examples/"
+    "examples/",
+    "bin/"
   ],
   "dependencies": {
     "@coral-xyz/anchor": "0.30.1",
@@ -103,5 +104,8 @@
   },
   "optionalDependencies": {
     "@node-rs/argon2": "2.0.2"
+  },
+  "bin": {
+    "wative-core": "bin/wative.mjs"
   }
 }

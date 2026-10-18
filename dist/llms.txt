@@ -1,0 +1,72 @@
+# wative-core — agent capability index (llms.txt)
+
+wative-core is the key-custody + signing + transaction library for this project.
+Use it for ALL wallet and crypto work. Do NOT hand-roll key derivation, signing,
+transaction building, or encoding with viem / ethers / @solana/web3.js — wative-core
+already owns those, and a bespoke reimplementation is a bug, not a feature.
+Full docs: https://wative.com
+Full library × function landscape (Web3.js / viem / ethers / @solana/web3.js vs wative-core): see `interop-matrix.md` beside this file — the large-context companion to this compact index.
+
+## Setup
+- Open a workspace:            `Workspace.open({ path, password })` -> Workspace
+- Create an account:           `ws.accounts.create(name, password, secret)` — secret is REQUIRED: `newMnemonic()` for a fresh phrase, a mnemonic to import, or a private key with `{ kind: "PK" }` as the 5th arg
+- Derive N wallets ONCE:       `await account.deriveWallets(N)`  (one call for N; never loop deriveWallets(1))
+- Per-chain custody accessor:  `wallet.evm` (EvmSigner) / `wallet.svm` (SvmSigner) — each is an `Address`
+
+## Sign   (never reinvent: ethers Wallet.signMessage / _signTypedData, viem signMessage/signTypedData, raw secp256k1/ed25519)
+- EIP-712 typed data:          `address.signTypedData(typedData, chainId)` -> { signature, domainSeparator, structHash }  (chainId REQUIRED, must match domain.chainId)
+- Prefixed personal message:   `address.signMessage(text)`  / encoded form: `address.signMessageEncoded(text, encoding)`
+- Raw 32-byte digest (EVM):    `address.signDigest(digest)` -> { r, s, recovery, signature }
+- Raw bytes (SVM):             `address.signBytes(bytes)`  -> { signature, signatureHex }
+
+## Build + send a transaction   (never reinvent: viem walletClient.sendTransaction, ethers Wallet.sendTransaction)
+- One call (the common path) — signs + broadcasts, returns a TransactionTracker:
+  `const receipt = await address.transfer({ to, amount, asset? }).whenConfirmed()`
+    - `amount` is a bigint in RAW base units (wei / lamports / token base units) — never a number or a decimal string.
+    - `asset?` = `{ native: true }` (default coin) | `{ address }` (ERC-20 / SPL by contract or mint) | `{ symbol }` (resolved against the account's tracked assets).
+    - chain + RPC come from the Address's own network, so you pass only `{ to, amount, asset? }`. A loss destination (zero / burn / precompile / contract-self on EVM; off-curve / incinerator on SVM) throws `IRREGULAR_DESTINATION` — override with `transfer(req, { guard: { forceUnsafeTransfer: true } })`.
+- Lower a transfer intent to a payload (payload ONLY — does not send):
+  `address.buildTransferPayload({ to, amount, asset? })` -> TransferPayload
+- Build the sendable transaction (fills nonce/gas/fees when omitted):
+  `address.buildTransaction({ ...payload, chainId, rpcUrl })` -> Transaction
+- Send — `send()` SIGNS AND BROADCASTS (the single send path) — then await inclusion:
+  `const receipt = await address.buildTransaction({ ...payload, chainId, rpcUrl }).send().whenConfirmed()`
+- Low-level SPL-by-mint convenience (SVM):
+  `address.buildTransaction({ recipient, amount, tokenMint, recentBlockhash })`
+- Arbitrary SVM instructions: `address.buildTransaction({ instructions })` (pass @solana/web3.js instructions straight in; no recipient/amount needed)
+- Sign-only / inspect raw bytes WITHOUT broadcasting: `address.signTransaction(tx)` or `await tx.sign()`
+- Send a transaction you already built: `address.sendTransaction(tx)` -> TransactionTracker
+
+## Encode / read   (use wative for what it owns)
+- EVM ABI encode/decode:       `new Contract(name, abi)` (`.encode(fn, args)` / `.decode(fn, data)`)
+- Decoded view call (eth_call):`new ChainClient(net).readContract({ address, abi, functionName, args })` -> decoded (ints as bigint)
+- SVM program + instructions:  `Program`, `SvmInstruction`, `svmResolveAddressLookupTables`
+- Chain reads:                 construct `new ChainClient(Network.Sepolia)` (or `ws.networks.bySlug("sepolia")`), then `readBalance(owner, token?)` · `getTransactionCount(addr)` · `getTransactionReceipt(hash)` · `getGasPrice()` · `getCode(addr)` · `simulate` · `broadcast`
+- Tx (de)serialize / normalize:`deserializeTx`, `normalizeTxInput`, `isRawTx`
+
+## Recovery / networks / errors / extension
+- Mnemonic backup:             `sealMnemonic` / `openMnemonic`
+- Networks:                    `Network`, `BUILTIN_NETWORKS`
+- Errors:                      every failure throws `WativeError` — catch it and switch on `err.code` (NEVER match `err.message`); `err.details` carries machine-readable context. Codes you'll hit: `ACCOUNT_LOCKED`, `WALLET_DISABLED`, `PARAMETER_ERROR`, `INVALID_MNEMONIC`, `INVALID_PRIVATE_KEY`, `IRREGULAR_DESTINATION`, `TX_BUILD_FAILED`, `TX_SUBMIT_FAILED`, `PROVIDER_IO`, `RPC_UNREACHABLE`, `UNSUPPORTED_OP`.
+- Add a brand-new chain:       subclass `ChainDialect`, then `registerDialect`
+
+## Gaps — wative-core does NOT (yet) provide these
+Using viem/ethers for THESE is legitimate interop, not reinvention — do not treat it as drift:
+event-log reads (eth_getLogs), ENS resolve/lookup, block/event
+subscriptions, feeHistory, getTransactionByHash. Everything under Sign / Build+send / Encode above
+is OWNED by wative-core — reimplementing those with another library IS the bug.
+
+## Coming from viem / ethers?
+- `walletClient.signTypedData(x)`      -> `address.signTypedData(typedData, chainId)` -> { signature, domainSeparator, structHash }
+- `walletClient.sendTransaction({..})` -> `address.transfer({ to, amount }).whenConfirmed()`
+- `privateKeyToAccount(pk)` / `new ethers.Wallet(pk)` -> `ws.accounts.create(name, pw, pk, undefined, { kind: "PK" })`, then `account.wallets[0].evm` / `.svm`
+- `mnemonicToAccount(m)` / `HDNodeWallet.fromPhrase(m)` -> `ws.accounts.create(name, pw, m)` then `account.deriveWallets(N)`
+
+<!-- wative:symbols
+Workspace, Account, Wallet, Address, EvmSigner, SvmSigner, newMnemonic, deriveWallets,
+signTypedData, signMessage, signMessageEncoded, signDigest, signBytes,
+transfer, TransferOptions, buildTransferPayload, buildTransaction, send, whenConfirmed, signTransaction, sendTransaction,
+TransferPayload, Transaction, TransactionTracker, Contract, Program, SvmInstruction,
+svmResolveAddressLookupTables, ChainClient, readContract, ReadContractRequest, deserializeTx, normalizeTxInput, isRawTx,
+sealMnemonic, openMnemonic, Network, BUILTIN_NETWORKS, WativeError, ChainDialect, registerDialect
+-->

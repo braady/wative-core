@@ -10,6 +10,8 @@ Runs in Node and in the browser environments. Everything a workspace persists �
 
 Where those records live is yours to choose: files, IndexedDB, Docker, NSA, databases, CDN, RAM, etc. Any encryption algorithm, any format, any storage media.
 
+> **Building on wative-core with a coding agent?** wative-core owns all key custody, signing, transaction building, and encoding — use it for every wallet/crypto step rather than re-implementing any of it with `viem`, `ethers`, or `@solana/web3.js`. Run `npx wative-core init-agent` to drop the anti-drift kit into your repo, and see [Coding agents](#coding-agents) below.
+
 ## How it fits together
 
 A workspace is the container. Everything else nests inside it:
@@ -370,6 +372,83 @@ node node_modules/wative-core/examples/01-quick-start.test.cjs
 
 Files cover: quick start, HD vs PK accounts, network management, asset management, address signing, custom storage backends, persistence, workspace search, default-network selection, subpath imports, the workspace logger, workspace config, the ESM entry, package resolution, known-answer vectors, locked-state behaviour, one-key-per-workspace derivation, adding a custom chain, and token transfers. See [examples/README.md](./examples/README.md) for the full index — it is the list that stays current.
 
+## Coding agents
+
+If you build on wative-core with a coding agent (Claude Code, Codex, Cursor, …),
+keep it on the wative-core API instead of drifting back to `viem` / `ethers` /
+`@solana/web3.js`. One command drops a repo-local kit that does exactly that:
+
+```bash
+npx wative-core init-agent
+```
+
+### What it installs
+
+| Path | What it is |
+| --- | --- |
+| `AGENTS.md` | A project-root brief that coding-agent harnesses auto-load — the drift rule, the owned-vs-interop boundary, and a paste-in ESLint block. |
+| `.wative/llms.txt` | The one-screen capability index, with exact call signatures. Point your agent here. |
+| `.wative/interop-matrix.md` | The full library × function landscape (`viem` / `ethers` / `web3.js` / `@solana/web3.js` vs wative-core), with the honest read-path gaps. |
+| `.wative/eslint-no-reinvent.mjs` | The importable ESLint flat-config — the hard lint gate (see below). |
+| `.claude/skills/wative-core/SKILL.md` | A Claude Code skill the harness auto-discovers, re-injecting the wative-core recipes when crypto/wallet work starts. |
+| `.claude/hooks/` + `.codex/hooks/` | A real-time pre-write hook that blocks a banned crypto import the moment the agent writes one. |
+
+The Claude Code hook auto-registers in `.claude/settings.json` (your other hooks
+are left untouched). The Codex hook is installed too, but its config schema varies
+by build, so `init-agent` prints the one-line registration step rather than
+editing a config it can't verify.
+
+### The hard gate: ESLint
+
+The hooks fire only inside the agent; ESLint + CI is the enforced floor. Spread the
+installed config into your flat config:
+
+```js
+// eslint.config.js (or .mjs)
+import wative from "./.wative/eslint-no-reinvent.mjs";
+
+export default [
+  ...wative,
+  // ...your own config
+];
+```
+
+It bans only the custody / signing / derivation surface wative-core owns, and
+leaves read clients and instruction-building alone.
+
+### What counts as drift — and what doesn't
+
+Reaching for another library to **sign, derive a key, build/send a transaction,
+or ABI-encode** is the drift the kit prevents — wative-core owns all of it.
+
+What wative-core does **not** own yet is legitimate interop, not drift: event-log
+reads (`eth_getLogs`), ENS resolve/lookup, block/event subscriptions, `feeHistory`,
+and `getTransactionByHash`. Using `viem` / `ethers` for those is expected and
+correct.
+
+### Coming from viem / ethers
+
+| Coming from (viem / ethers) | Use (wative-core) |
+| --- | --- |
+| `walletClient.signTypedData(x)` / `wallet._signTypedData(...)` | `address.signTypedData(typedData, chainId)` → `{ signature, domainSeparator, structHash }` |
+| `walletClient.sendTransaction({ to, value })` | `address.transfer({ to, amount }).whenConfirmed()` (or the explicit `buildTransaction(...).send()`) |
+| `privateKeyToAccount(pk)` / `new ethers.Wallet(pk)` | `ws.accounts.create(name, pw, pk, undefined, { kind: "PK" })`, then `account.wallets[0].evm` / `.svm` |
+| `mnemonicToAccount(m)` / `HDNodeWallet.fromPhrase(m)` | `ws.accounts.create(name, pw, m)`, then `account.deriveWallets(N)` |
+
+### Keeping the kit fresh
+
+The kit is stamped with the wative-core version it was generated from. After you
+upgrade wative-core, re-run `init-agent` to refresh it:
+
+```bash
+npx wative-core init-agent          # refresh the kit after an upgrade
+npx wative-core init-agent --check  # in CI: fail if the kit is stale
+```
+
+`--check` catches when an upgrade has outdated the kit. The `.wative/*` files are
+kit-managed and are refreshed in place; your `AGENTS.md` is left alone unless you
+pass `--force`, since you may have edited it.
+
 ## What you can do
 
 The library is organized around seven things you'll work with:
@@ -588,22 +667,45 @@ console.log(sim.gasUsed);
 
 `address.signTransaction(tx)` returns straight away and does not wait for the signature. To use the signed bytes (`tx.rawTransaction`, `tx.hash`), `await tx.sign()` first — it resolves once signing is done and is safe to call more than once.
 
-`buildTransferPayload()` is the one-call path for moving value — it works out the right payload for the asset (native value, ERC-20 calldata, or SPL instructions). You then pass that payload to `buildTransaction()` and send it like any other transaction:
+`transfer()` is the one-call path for moving value — it lowers the intent, builds the transaction, and broadcasts, returning a `TransactionTracker`. `buildTransferPayload()` + `buildTransaction()` stay available for when you want to inspect or set gas/nonce before sending:
 
 ```ts
-// native coin (omit `asset`)
-const nativePayload = evmAddr.buildTransferPayload({ to: recipient, amount: 1_000_000_000_000_000n });
-// an ERC-20 / SPL token, by contract address or mint
-const tokenPayload = evmAddr.buildTransferPayload({ to: recipient, asset: { address: usdcAddress }, amount: 1_000_000n });
-// or by symbol, resolved against the network's known tokens
-const bySymbol = evmAddr.buildTransferPayload({ to: recipient, asset: { symbol: "USDC" }, amount: 1_000_000n });
+// one call: native coin (omit `asset`), a token by contract address / mint, or by symbol
+const receipt = await evmAddr.transfer({ to: recipient, amount: 1_000_000_000_000_000n }).whenConfirmed();
+await evmAddr.transfer({ to: recipient, asset: { address: usdcAddress }, amount: 1_000_000n }).whenConfirmed();
+await evmAddr.transfer({ to: recipient, asset: { symbol: "USDC" }, amount: 1_000_000n }).whenConfirmed();
 
-// build the transaction from the payload, then sign/send it
-const tx = evmAddr.buildTransaction({ ...nativePayload, chainId: 1 });
-await tx.sign();
+// finer control: build the payload + transaction yourself, then send
+const payload = evmAddr.buildTransferPayload({ to: recipient, amount: 1_000_000_000_000_000n });
+const sent = await evmAddr.buildTransaction({ ...payload, chainId: 1 }).send().whenConfirmed();
 ```
 
 Amounts are in the token's smallest unit. `buildTransaction` fills in nonce/gas/fees for you when you omit them, or uses the values you pass. An SPL transfer to a recipient without a token account prepends the account-creation step for you.
+
+#### Typed data (EIP-712)
+
+`signTypedData` signs an EIP-712 payload and hands back the signature together
+with the two hashes a verifier recomputes:
+
+```ts
+const typedData = {
+  domain: { name: "MyDapp", version: "1", chainId: 1, verifyingContract: "0x1111111111111111111111111111111111111111" },
+  types: {
+    Permit: [
+      { name: "owner", type: "address" },
+      { name: "value", type: "uint256" },
+    ],
+  },
+  primaryType: "Permit",
+  message: { owner: evmAddr.publicKey, value: 1_000_000n },
+};
+
+const { signature, domainSeparator, structHash } = evmAddr.signTypedData(typedData, 1);
+```
+
+`chainId` is **required** and must match `domain.chainId` — a mismatch is refused
+rather than signed for a chain you did not intend. This is EVM-only; an SVM address
+reports `UNSUPPORTED_OP`.
 
 #### Signing bytes you built yourself
 
@@ -709,6 +811,17 @@ const receipt = await evmTracker.whenConfirmed();
 
 For Solana transactions, build instructions with `@solana/web3.js` (or your preferred Solana toolkit) and pass them to `new SvmTransaction({ from, recipient, amount, instructions })`. The signing, sending, and tracker lifecycle then mirror the EVM flow.
 
+You can also hand instructions straight to `buildTransaction` — `recipient` and
+`amount` are optional, so an instructions-only build needs no transfer intent:
+
+```ts
+// pass @solana/web3.js instructions directly — no recipient / amount
+const svmTx = svmAddr.buildTransaction({ instructions: [ix1, ix2] });
+const tracker = await svmAddr.sendTransaction(svmTx);
+```
+
+`buildTransaction` fills in the recent blockhash and fee payer for you.
+
 #### Hand off to an external signer / RPC client
 
 Both `EvmTransaction` and `SvmTransaction` expose `toRawTx()` for routing the transaction through any chain-native tool you already use:
@@ -735,6 +848,47 @@ const rawSvm = await svmTx.toRawTx();
 ```
 
 For SVM, if you supply `recentBlockhash` at construction time, `toRawTx()` builds entirely offline — no Address binding required.
+
+### Reading the chain (ChainClient)
+
+`ChainClient` reads a network with no account and no key. `readContract` runs an
+`eth_call` and ABI-decodes the result for you — integers come back as `bigint`, a
+single-output function unwraps to a scalar, and a genuine multi-output function
+comes back as an array:
+
+```ts
+import { ChainClient, Network } from "wative-core";
+
+const client = new ChainClient(Network.Base);
+
+const symbol: string = await client.readContract({
+  address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+  abi: [{ name: "symbol", type: "function", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] }],
+  functionName: "symbol",
+});
+
+const bal: bigint = await client.readContract({
+  address: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+  abi: [{ name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] }],
+  functionName: "balanceOf",
+  args: [owner],
+});
+```
+
+This is wative-core's own view-call path — reach for it instead of viem's
+`publicClient.readContract(...)` or ethers' `contract.fn()`. The same client also
+reads balances, nonces and receipts:
+
+```ts
+await client.readBalance(owner);                 // native balance, raw base units
+await client.readBalance(owner, usdcAddress);    // ERC-20 balance
+await client.getTransactionCount(address);       // nonce
+await client.getTransactionReceipt(txHash);      // null until mined
+```
+
+`readContract` is EVM-only — it reports `UNSUPPORTED_OP` on an SVM network — and a
+call that returns no data (a revert, an address with no contract code, or an ABI
+mismatch) throws rather than returning an empty value.
 
 ### Workspace search
 
@@ -940,6 +1094,29 @@ import { TokenProgram, Token2022Program } from "wative-core/artifacts/svm";
 - **Runtime**: Node.js 22.12+. Deno / Bun / browser support is partial. Some chain libraries that ship as compiled dependencies do not have universal builds yet.
 - **Platform builds**: a few compiled dependencies lack pre-built binaries for Windows-ARM64 and Alpine-musl. Most installs on macOS / Linux x64 / Linux ARM64 won't notice.
 - **One process at a time**: opening the same workspace from two Node processes simultaneously isn't supported.
+
+## Upgrading
+
+Upgrade the package, then refresh the agent kit so your coding agent keeps
+targeting the current API:
+
+```bash
+pnpm add wative-core@latest
+npx wative-core init-agent          # refresh the kit after an upgrade
+npx wative-core init-agent --check  # in CI: fail if the kit is stale
+```
+
+New in this release, worth adopting:
+
+- `ChainClient.readContract(...)` — decoded EVM view calls, integers as `bigint`.
+- One-call `address.transfer({ to, amount, asset? }).whenConfirmed()` — the common send path, in a single call.
+- SVM `buildTransaction({ instructions })` — build from `@solana/web3.js` instructions directly, no transfer intent needed.
+- The coding-agent kit above (`npx wative-core init-agent`).
+
+Check your signing call sites while you are here: `signTypedData(typedData, chainId)`
+takes a required `chainId` (it must match `domain.chainId`) and returns
+`{ signature, domainSeparator, structHash }`. If an agent or an older snippet
+produced the one-argument form, update it to this shape.
 
 ## License
 

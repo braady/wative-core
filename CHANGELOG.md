@@ -2,6 +2,16 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] — 2026-10-18
+
+Adds a one-call transfer, decoded contract reads, instructions-only Solana builds, and a kit that keeps a coding agent on the wative-core API.
+
+### Added
+- One-call `address.transfer({ to, amount, asset? })` sends value in a single call and returns a tracker — `await address.transfer({ to, amount }).whenConfirmed()`. Send the native coin (omit `asset`), a token by its contract address or mint, or a token by symbol.
+- `new ChainClient(net).readContract({ address, abi, functionName, args })` reads a contract's view function and returns the decoded result — integers as `bigint`, a single output unwrapped to a scalar, several as an array. Keyless; EVM only.
+- Solana `buildTransaction({ instructions })` builds from arbitrary instructions, with `recipient` and `amount` now optional — pass `@solana/web3.js` instructions straight in.
+- A coding-agent kit, installed with `npx wative-core init-agent`: an `AGENTS.md` brief, a capability index and interop matrix, an importable ESLint gate, a Claude Code skill, and real-time pre-write hooks for Claude Code and Codex — so an agent building on wative-core stays on its API instead of reaching for `viem`, `ethers`, or `@solana/web3.js`.
+
 ## [2.6.1] — 2026-10-16
 
 Adds a progress option for deriving many wallets at once, a default multicall contract on every built-in EVM network that you can override, and fixes typed-data signing on a disabled wallet.
