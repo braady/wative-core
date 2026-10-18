@@ -55,7 +55,7 @@ test("a locked account refuses every operation that needs key material", async (
   await refuses("ACCOUNT_LOCKED", "dumpMnemonic", () => account.dumpMnemonic());
   await refuses("ACCOUNT_LOCKED", "dumpPrivateKey", () => wallet.dumpPrivateKey("evm"));
   await refuses("ACCOUNT_LOCKED", "signMessage", () => address.signMessage("hello"));
-  await refuses("ACCOUNT_LOCKED", "signTypedData", () => address.signTypedData(TYPED_DATA));
+  await refuses("ACCOUNT_LOCKED", "signTypedData", () => address.signTypedData(TYPED_DATA, 1));
   await refuses("ACCOUNT_LOCKED", "signDigest", () => address.signDigest("0x" + "ab".repeat(32)));
   await refuses("ACCOUNT_LOCKED", "deriveWallets", () => account.deriveWallets(1));
 
