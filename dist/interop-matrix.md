@@ -7,7 +7,7 @@ landscape and wative-core's coverage.
 
 > Web3.js / viem / ethers are EVM signing + RPC libraries; `@solana/web3.js` is the Solana equivalent.
 > wative-core is a multi-chain key-custody + automation platform, so it covers a wider capability surface
-> — the comparison below reflects real coverage, including the read-path gaps where wative-core is `—`.
+> — the comparison below reflects real coverage.
 
 ## Capabilities at a glance
 
@@ -19,7 +19,7 @@ landscape and wative-core's coverage.
 | EVM chains | ✓ | ✓ | ✓ | ✓ | — |
 | Solana / SVM | ✓ | — | — | — | ✓ |
 | Encrypted key custody + multi-workspace vault | ✓ | — | — | — | — |
-| Storage-agnostic persistence (files / IndexedDB / DB / custom) | ✓ | — | — | — | — |
+| Storage-agnostic persistence (files / IndexedDB / custom) | ✓ | — | — | — | — |
 | HD cohort — N wallets from one mnemonic, fast switching | ✓ | — | partial | partial | manual |
 | One-call transfer (intent → build → sign → send → track) | ✓ | — | — | — | — |
 | ERC-20 / SPL transfer from one intent | ✓ | partial | partial | partial | partial |
@@ -29,15 +29,10 @@ landscape and wative-core's coverage.
 | Pluggable custom chains (subclass a dialect) | ✓ | — | — | — | — |
 | Sign message / EIP-712 / raw digest | ✓ | ✓ | ✓ | ✓ | partial |
 | Core reads (balance / nonce / receipt / gas / code) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Event logs / subscriptions / ENS | — | ✓ | ✓ | ✓ | n/a |
-
-The single `—` row in the wative-core column is the honest read-path gap (see Gaps) — using another
-library there is legitimate interop, not drift. Everything else is owned by wative-core.
 
 ## Function-level calls — EVM
 
-How to read: a call in the wative-core column means **use it, do not re-implement it**. `—` = no
-equivalent yet (interop is fine). "auto" = done for you inside `buildTransaction` / `send`.
+How to read: a call in the wative-core column means **use it, do not re-implement it**. "auto" = done for you inside `buildTransaction` / `send`.
 
 | Operation | **wative-core** | Web3.js | viem | ethers |
 |---|---|---|---|---|
@@ -58,9 +53,6 @@ equivalent yet (interop is fine). "auto" = done for you inside `buildTransaction
 | Estimate gas / fees | auto (filled by `buildTransaction` / `send`) | `web3.eth.estimateGas(tx)` | `publicClient.estimateGas(tx)` | `provider.estimateGas(tx)` |
 | Tx receipt / wait | `await …transfer(...).whenConfirmed()` · `ChainClient.getTransactionReceipt(h)` | `web3.eth.getTransactionReceipt(h)` | `publicClient.waitForTransactionReceipt({ hash })` | `tx.wait()` |
 | Contract bytecode | `new ChainClient(net).getCode(address)` | `web3.eth.getCode(addr)` | `publicClient.getBytecode({ address })` | `provider.getCode(addr)` |
-| Read event logs | — (roadmap) | `web3.eth.getPastLogs(filter)` | `publicClient.getLogs(filter)` | `provider.getLogs(filter)` |
-| Subscribe (blocks/events) | — (roadmap) | `web3.eth.subscribe('newBlockHeaders')` | `publicClient.watchBlocks(...)` | `provider.on('block', cb)` |
-| ENS resolve name | — (roadmap) | `web3.eth.ens.getAddress(name)` | `publicClient.getEnsAddress({ name })` | `provider.resolveName(name)` |
 
 ## Function-level calls — SVM (Solana)
 
@@ -78,14 +70,6 @@ Web3.js / viem / ethers do not cover SVM; the comparison is against `@solana/web
 | Account info | `new ChainClient(net).getAccountInfo(address)` | `connection.getAccountInfo(pk)` |
 | Signature status | `ChainClient.getSignatureStatus(sig)` · `await …transfer(...).whenConfirmed()` | `connection.getSignatureStatuses([sig])` |
 | SPL balance | `new ChainClient(net).readBalance(owner, mint)` | `getAccount` / `getTokenAccountBalance` |
-
-## Gaps (the `—` rows) — roadmap, and where interop is legitimate
-
-wative-core does not yet provide: **event-log reads** (`getLogs`), **block/event subscriptions**, **ENS**
-resolve/lookup, `feeHistory`, and `getTransactionByHash`. Using
-viem/ethers/web3 for exactly these is expected and correct — it is NOT reinventing a wative capability.
-Everything else above is owned by wative-core, and re-implementing it with another library is the drift
-this matrix exists to prevent.
 
 <!-- wative:symbols
 Workspace, Account, deriveWallets, Wallet, signMessage, signTypedData, signDigest, signBytes,

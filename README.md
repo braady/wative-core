@@ -266,48 +266,24 @@ That is deliberately expensive, which is why unlocking takes a moment and why
 the sections below are about speed rather than correctness — every option
 produces the same keys.
 
-Nothing to install: it runs on a bundled WebAssembly build by default, with no
-native binary and no build step.
+Unlocking a workspace costs **one** derivation per password, however many
+accounts and addresses it holds — on every provider, in Node and in the browser.
+Unlocking a 50-address account takes well under a second, and stays there however
+many addresses you add.
 
-### One derivation per container: `HybridProviderV3` (Node only)
+- **Node** derives through the native `@node-rs/argon2` package, a regular
+  dependency installed with `wative-core`.
+- **Browser** derives through a bundled WebAssembly build — no native binary and
+  no build step.
 
-```ts
-import { Workspace, HybridProviderV3 } from "wative-core";
-
-const ws = await Workspace.open(new HybridProviderV3("~/wallets"), password);
-```
-
-`HybridProvider` derives a key per stored secret, so unlocking an account costs
-one derivation per address and gets slower as the account grows.
-`HybridProviderV3` derives once per workspace instead — unlocking a 50-address
-account goes from about 7 seconds to under 200 ms, and stays there however many
-addresses you add.
-
-It is the Node default where `@node-rs/argon2` is installed, and Node-only: that
-package has no browser build. Construct it yourself only to pick a location, or
-to be sure you get it rather than the fallback.
-
-### One derivation per container in the browser: `IdbProviderV3`
-
-```ts
-import { Workspace, IdbProviderV3 } from "wative-core";
-
-const provider = await IdbProviderV3.create("my-dapp");
-const ws = await Workspace.open({ provider, password });
-```
-
-`IdbProviderV3` is the browser counterpart of `HybridProviderV3`: unlocking stays
-just as fast whether a workspace holds a few accounts or many, with no native
-binary. It is opt-in — the default `IdbProvider` is unchanged, so construct
-`IdbProviderV3` yourself to use it, and its `create` takes the same options. A
-workspace it writes cannot be opened by older versions of this library.
+`HybridProviderV3` and `IdbProviderV3` are the same providers as `HybridProvider`
+and `IdbProvider` under the names 2.6.x introduced; use either.
 
 ### Resuming an unlocked workspace without the password
 
-A workspace on a v3 provider (`IdbProviderV3` or `HybridProviderV3`) can hand out
-a 32-byte **session key** that reopens it later without the password — for
-example to restore an unlocked session after a browser extension's background
-page is evicted:
+Every built-in provider can hand out a 32-byte **session key** that reopens an
+unlocked workspace later without the password — for example to restore an
+unlocked session after a browser extension's background page is evicted:
 
 ```ts
 const key = ws.exportSessionKey();        // 32 bytes — keep it somewhere memory-only
@@ -317,9 +293,10 @@ const ws2 = await Workspace.openWithSessionKey(provider, key);
 ```
 
 The session key opens the same records the password does, so guard it as
-carefully as the workspace itself. A wrong key leaves the workspace locked, an
-account with its own password still needs that password, and a v2 provider
-(`IdbProvider`) has no such key — `exportSessionKey()` reports `UNSUPPORTED_OP`.
+carefully as the workspace itself. A wrong key leaves the workspace locked, and
+an account with its own password still needs that password. A custom backend
+that extends `Provider` directly (rather than `ContainerProvider`) has no session
+key — `exportSessionKey()` reports `UNSUPPORTED_OP` there.
 
 ### Checking which implementation ran
 
@@ -330,8 +307,8 @@ argon2BackendInfo();
 // -> { backend: "wasm" | "noble" | "unresolved", wasm, reason?, overrides }
 ```
 
-`backend` is the process-wide default. A provider may carry its own — a
-`HybridProviderV3` does — so check **`overrides`** to confirm the native path
+`backend` is the process-wide default. A provider may carry its own — every
+`HybridProvider` does — so check **`overrides`** to confirm the native path
 took. It is a pure read and resolves nothing, so before the first unlock it
 honestly answers `"unresolved"`.
 
@@ -905,7 +882,7 @@ const asset   = await ws.filter("USDC", "Asset");
 
 | environment | default | notes |
 |---|---|---|
-| Node, with `import "wative-core/node"` | `HybridProviderV3`, falling back to `HybridProvider` | encrypted files on disk |
+| Node, with `import "wative-core/node"` | `HybridProviderV3` | encrypted files on disk |
 | Browser | `IdbProvider` | IndexedDB, in the current origin |
 | Node, without the node import | *none* — throws, and the message tells you to add the import | |
 
@@ -916,10 +893,7 @@ await Workspace.open("my-wallet", password);  // path in Node, database name in 
 await Workspace.open({ password });            // omit it for the conventional location / "wative"
 ```
 
-Two things to know about the Node default:
-
-- It uses `HybridProviderV3` when `@node-rs/argon2` is installed, and `HybridProvider` when it is not. V3 derives one key per workspace instead of one per stored secret, so unlocking an account with many addresses is a single derivation rather than one each. `@node-rs/argon2` is an optional dependency because a few platforms have no prebuilt binary.
-- Either provider opens a workspace the other wrote, so falling back costs speed, not access. ⚠️ Older versions of this library cannot open a V3 workspace, and there is no way back — check `argon2BackendInfo()` if you need to know which you got.
+The Node default needs `@node-rs/argon2`, which installs with the package. On a platform with no prebuilt binary for it, constructing the provider fails with `UNSUPPORTED_OP` and a message naming the package. A workspace written by this version also opens in 2.6.2; older versions may not open it.
 
 Pass a provider explicitly whenever you need to configure it — a non-default location, a named database, or acknowledging evictable browser storage:
 
@@ -1092,7 +1066,7 @@ import { TokenProgram, Token2022Program } from "wative-core/artifacts/svm";
 
 - **Content-Security-Policy (browser)**: grant `'wasm-unsafe-eval'` in `script-src`, or key derivation silently degrades to a ~17x slower pure-JS path. See [Key derivation](#key-derivation).
 - **Runtime**: Node.js 22.12+. Deno / Bun / browser support is partial. Some chain libraries that ship as compiled dependencies do not have universal builds yet.
-- **Platform builds**: a few compiled dependencies lack pre-built binaries for Windows-ARM64 and Alpine-musl. Most installs on macOS / Linux x64 / Linux ARM64 won't notice.
+- **Platform builds**: the Node filesystem provider needs `@node-rs/argon2`, which ships prebuilt binaries for macOS, Linux (glibc and musl), Windows, FreeBSD and Android. A few other compiled dependencies lack pre-built binaries for Windows-ARM64 and Alpine-musl.
 - **One process at a time**: opening the same workspace from two Node processes simultaneously isn't supported.
 
 ## Upgrading
@@ -1106,7 +1080,37 @@ npx wative-core init-agent          # refresh the kit after an upgrade
 npx wative-core init-agent --check  # in CI: fail if the kit is stale
 ```
 
-New in this release, worth adopting:
+### From 2.6.2 or earlier: convert v2 workspaces first
+
+⚠️ 2.6.3 no longer opens workspaces stored in the older v2 format: anything
+`IdbProvider` or `HybridProvider` wrote before 2.6.3 — every browser workspace
+on the default provider, and a Node workspace created before 2.4.1 even if a
+later version has opened it since. Opening one fails with `DECRYPT_FAILED` and a
+message naming the v2 format, and changes nothing on disk, so you can go back to
+2.6.2. A workspace that only `IdbProviderV3` or `HybridProviderV3` ever wrote
+opens unchanged.
+
+Convert with 2.6.2, before upgrading:
+
+1. Open the old workspace as usual.
+2. Create a new, empty workspace at a new location with `HybridProviderV3`
+   (Node) or `IdbProviderV3` with a new database name (browser), under the
+   password you want to keep.
+3. For each account, unlock it and re-create it in the new workspace with the
+   same name, password, kind and `hasOwnPassword` setting:
+   `dumpMnemonic()` for an HD account, then `deriveWallets` to the same wallet
+   count; `wallet.dumpPrivateKey(vm)` for an imported-key account.
+4. Re-add any networks and tokens you added, and re-apply wallet tags and
+   disabled slots.
+5. Upgrade, and open the new workspace.
+
+Opening an old workspace with `HybridProviderV3` or `IdbProviderV3` in 2.6.2 is
+**not** a conversion: it leaves most records in the v2 format.
+
+Mnemonic backups made with `sealMnemonic()` before 2.6.3 still open with
+`openMnemonic()`.
+
+New in 2.6.2, worth adopting:
 
 - `ChainClient.readContract(...)` — decoded EVM view calls, integers as `bigint`.
 - One-call `address.transfer({ to, amount, asset? }).whenConfirmed()` — the common send path, in a single call.

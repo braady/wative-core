@@ -2,6 +2,18 @@
 
 All notable changes to `wative-core` are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] — 2026-11-11
+
+Every storage provider now unlocks with one key derivation and supports session keys; workspaces in the older v2 storage format must be converted with 2.6.2 before upgrading.
+
+### Changed
+- BREAKING: workspaces in the v2 storage format — anything `IdbProvider` or `HybridProvider` wrote before 2.6.3 — no longer open; opening one fails with `DECRYPT_FAILED`, names the format and changes nothing. Convert with 2.6.2 first: open the old workspace, create a new one with `HybridProviderV3` (Node) or `IdbProviderV3` (browser) at a new location, and re-create each account in it from `dumpMnemonic()` or `wallet.dumpPrivateKey(vm)` — see Upgrading in the README. Opening the old workspace with a V3 provider alone does not convert it. Mnemonic backups from `sealMnemonic()` still open.
+- `IdbProvider` and `HybridProvider` now write the same format as `IdbProviderV3` and `HybridProviderV3`, and each pair is interchangeable: unlocking costs one key derivation however many accounts a workspace holds, and `exportSessionKey()`, `openWithSessionKey()` and `unlockWithSessionKey()` work on all four.
+- `@node-rs/argon2` is now a required dependency in Node, installed with the package; the slower fallback is gone, so on a platform without its prebuilt binary the Node provider reports `UNSUPPORTED_OP`.
+
+### Fixed
+- Reopening or unlocking an existing browser workspace no longer needs `{ acknowledgeEvictionRisk: true }` when the browser has not granted persistent storage. `IdbProvider` and `IdbProviderV3` now ask for it only when you create a new workspace, so a provider from plain `IdbProvider.create(name)` opens an existing workspace through `Workspace.open`, `unlock()`, `openWithSessionKey()` and `unlockWithSessionKey()`. Creating a new workspace in evictable storage without it is still refused with `STORAGE_NOT_DURABLE`.
+
 ## [2.6.2] — 2026-10-18
 
 Adds a one-call transfer, decoded contract reads, instructions-only Solana builds, and a kit that keeps a coding agent on the wative-core API.

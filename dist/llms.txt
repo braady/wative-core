@@ -50,12 +50,6 @@ Full library × function landscape (Web3.js / viem / ethers / @solana/web3.js vs
 - Errors:                      every failure throws `WativeError` — catch it and switch on `err.code` (NEVER match `err.message`); `err.details` carries machine-readable context. Codes you'll hit: `ACCOUNT_LOCKED`, `WALLET_DISABLED`, `PARAMETER_ERROR`, `INVALID_MNEMONIC`, `INVALID_PRIVATE_KEY`, `IRREGULAR_DESTINATION`, `TX_BUILD_FAILED`, `TX_SUBMIT_FAILED`, `PROVIDER_IO`, `RPC_UNREACHABLE`, `UNSUPPORTED_OP`.
 - Add a brand-new chain:       subclass `ChainDialect`, then `registerDialect`
 
-## Gaps — wative-core does NOT (yet) provide these
-Using viem/ethers for THESE is legitimate interop, not reinvention — do not treat it as drift:
-event-log reads (eth_getLogs), ENS resolve/lookup, block/event
-subscriptions, feeHistory, getTransactionByHash. Everything under Sign / Build+send / Encode above
-is OWNED by wative-core — reimplementing those with another library IS the bug.
-
 ## Coming from viem / ethers?
 - `walletClient.signTypedData(x)`      -> `address.signTypedData(typedData, chainId)` -> { signature, domainSeparator, structHash }
 - `walletClient.sendTransaction({..})` -> `address.transfer({ to, amount }).whenConfirmed()`

@@ -24,13 +24,6 @@ wallet/crypto code. Full docs: https://wative.com
 `send()` signs **and** broadcasts (the single send path). `sign()` / `signTransaction()`
 only sign — they do **not** broadcast, so code that ends at `sign()` moves no funds.
 
-## What wative-core does NOT own (viem/ethers here is fine)
-
-Event-log reads (`eth_getLogs`), ENS resolve/lookup,
-block/event subscriptions, `feeHistory`, `getTransactionByHash`. These have no
-wative-core equivalent yet — using another library for them is legitimate interop,
-not reinvention. Everything in the index above is owned by wative-core.
-
 ## Enforcement — paste into your app's ESLint config
 
 This bans **only** the custody/signing/derivation surface wative-core owns, and

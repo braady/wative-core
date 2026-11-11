@@ -6,8 +6,8 @@ const { mkdtempSync } = require("node:fs");
 const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
-// A v3 provider has one container key; shown here on HybridProviderV3 (Node) — IdbProviderV3 is the browser twin.
-const { Workspace, HybridProviderV3 } = require("wative-core");
+// Every provider has one container key; shown on HybridProviderV3 and HybridProvider — IdbProvider works the same in a browser.
+const { Workspace, HybridProvider, HybridProviderV3 } = require("wative-core");
 
 const MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -64,4 +64,18 @@ test("unlockWithSessionKey resumes a locked workspace, and exportSessionKey need
   await ws.unlockWithSessionKey(key);
   assert.strictEqual(ws.locked, false);
   await ws.close();
+});
+
+test("HybridProvider hands out a session key the same way", async () => {
+  const root = mkdtempSync(join(tmpdir(), "wative-session-key-"));
+  const ws = await Workspace.open(new HybridProvider(root), PW);
+  const acc = await ws.accounts.create("Desk", PW, MNEMONIC, undefined, { kind: "HD", hasOwnPassword: false });
+  const key = ws.exportSessionKey();
+  await ws.close();
+
+  const resumed = await Workspace.openWithSessionKey(new HybridProvider(root), key);
+  const back = resumed.accounts.bySlug(acc.slug);
+  await back.tryUnlock();
+  assert.strictEqual(back.dumpMnemonic(), MNEMONIC);
+  await resumed.close();
 });

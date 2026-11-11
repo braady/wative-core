@@ -1,4 +1,4 @@
-// 18 — HybridProviderV3 and the v3 envelope, exercised through the published package.
+// 18 — Every provider writes the v3 envelope; HybridProvider and HybridProviderV3 shown through the published package.
 
 const test = require("node:test");
 const assert = require("node:assert");
@@ -7,7 +7,7 @@ const { tmpdir } = require("node:os");
 const { join } = require("node:path");
 
 // Both from the SAME entry point — each entry is its own bundle with its own classes.
-const { Workspace, HybridProviderV3 } = require("wative-core");
+const { Workspace, HybridProvider, HybridProviderV3 } = require("wative-core");
 
 const MNEMONIC =
   "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
@@ -41,7 +41,7 @@ test("HybridProviderV3 writes v3 records, and they all share one salt", async ()
     assert.strictEqual(
       byFile[name],
       3,
-      `${name} is a v${byFile[name]} envelope — HybridProviderV3 silently degraded to v2`,
+      `${name} is a v${byFile[name]} envelope, expected v3`,
     );
   }
 
@@ -84,4 +84,21 @@ test("a wrong password is rejected, and does not damage the container", async ()
   ws = await Workspace.open(new HybridProviderV3(root), PW);
   assert.strictEqual(ws.accounts.length, 1);
   await ws.lock();
+});
+
+test("HybridProvider writes v3 too, and opens what HybridProviderV3 wrote", async () => {
+  const root = mkdtempSync(join(tmpdir(), "wative-v3-example-"));
+  let ws = await Workspace.open(new HybridProviderV3(root), PW);
+  const created = await ws.accounts.create("V3 Desk", PW, MNEMONIC);
+  await ws.lock();
+
+  ws = await Workspace.open(new HybridProvider(root), PW);
+  const acc = ws.accounts.bySlug(created.slug);
+  await acc.tryUnlock(PW);
+  await acc.deriveWallets(1);
+  assert.strictEqual(acc.dumpMnemonic(), MNEMONIC);
+  await ws.lock();
+
+  const byFile = versions(root);
+  for (const name of Object.keys(byFile)) assert.strictEqual(byFile[name], 3, `${name} is not v3`);
 });

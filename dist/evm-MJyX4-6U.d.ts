@@ -1,4 +1,4 @@
-import { c as Address, B as EvmTxBuildParams, z as EvmTransaction } from './workspace-C_DNamEl.cjs';
+import { c as Address, B as EvmTxBuildParams, z as EvmTransaction } from './workspace-BZCcH-Av.js';
 
 interface AbiItem {
     type?: string;

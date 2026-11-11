@@ -59,9 +59,7 @@ const { signature } = addr.signTypedData(typedData, chainId);
 
 ## Legitimate interop — NOT drift
 
-wative-core does not yet provide event-log reads (`getLogs`), ENS resolve/lookup, block/event
-subscriptions, `feeHistory`, or `getTransactionByHash` — using viem/ethers/web3 for THOSE is
-correct interop. Likewise, building `@solana/web3.js` program instructions and handing them to
+Building `@solana/web3.js` program instructions and handing them to
 `buildTransaction({ instructions })` is the documented SVM path, not
 reinvention. Everything on the private-key-to-broadcast path above is owned by wative-core;
 re-implementing it is the drift this skill exists to prevent.
